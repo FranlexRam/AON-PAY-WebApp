@@ -1,50 +1,154 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
 
-// Estructura de tipo para los países / divisas
 interface Currency {
   id: string;
   name: string;
   code: string;
   flag: string;
-  rateToUSDT: number; // Tasa referencial base (se sincronizará con Supabase más adelante)
+  rate_to_usdt: number;
+  updated_at?: string;
 }
 
-// Lista actualizada de países solicitados
-const AVAILABLE_CURRENCIES: Currency[] = [
-  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rateToUSDT: 1 },
-  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rateToUSDT: 36.5 },
-  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rateToUSDT: 3950.0 },
-  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rateToUSDT: 3.72 },
-  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rateToUSDT: 940.0 },
-  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rateToUSDT: 1.0 },
-  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rateToUSDT: 4.98 },
+const DEFAULT_CURRENCIES: Currency[] = [
+  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1 },
+  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 36.5 },
+  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0 },
+  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72 },
+  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0 },
+  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0 },
+  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98 },
 ];
 
-export default function Home() {
-  // Selección de divisas globales para la sesión
-  const [originCurrency, setOriginCurrency] = useState<Currency>(AVAILABLE_CURRENCIES[0]); // USA (USD)
-  const [targetCurrency, setTargetCurrency] = useState<Currency>(AVAILABLE_CURRENCIES[1]); // Venezuela (VES)
+// Función para formatear el tiempo transcurrido
+function getRelativeTimeString(dateString?: string): string {
+  if (!dateString) return "recientemente";
 
-  // Estados Calculadora 1: "Si se envían" -> "Se reciben"
+  const lastUpdate = new Date(dateString).getTime();
+  const now = new Date().getTime();
+  const diffInMinutes = Math.floor((now - lastUpdate) / (1000 * 60));
+
+  if (diffInMinutes < 1) return "hace unos segundos";
+  if (diffInMinutes < 60) return `hace ${diffInMinutes}min`;
+
+  const hours = Math.floor(diffInMinutes / 60);
+  const minutes = diffInMinutes % 60;
+
+  if (minutes === 0) return `hace ${hours}h`;
+  return `hace ${hours}h ${minutes}min`;
+}
+
+export default function Home() {
+  const [currencies, setCurrencies] = useState<Currency[]>(DEFAULT_CURRENCIES);
+  const [loadingRates, setLoadingRates] = useState<boolean>(true);
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<string>("");
+
+  const [originCurrency, setOriginCurrency] = useState<Currency>(DEFAULT_CURRENCIES[0]);
+  const [targetCurrency, setTargetCurrency] = useState<Currency>(DEFAULT_CURRENCIES[1]);
+
   const [c1Envio, setC1Envio] = useState<string>("");
   const [c1Recibe, setC1Recibe] = useState<string>("");
 
-  // Estados Calculadora 2: "Para recibir" -> "Hay que enviar"
   const [c2Recibe, setC2Recibe] = useState<string>("");
   const [c2Envio, setC2Envio] = useState<string>("");
 
-  // Estado para el modal selector de país
   const [modalType, setModalType] = useState<"origin" | "target" | null>(null);
 
-  // Número oficial para WhatsApp
   const PHONE_NUMBER = "584127591543";
 
-  // Tasa de cambio cruzada entre Origen y Destino
-  const currentRate = targetCurrency.rateToUSDT / originCurrency.rateToUSDT;
+  // Cargar y escuchar cambios en tiempo real
+  useEffect(() => {
+    const fetchRates = async () => {
+      setLoadingRates(true);
+      const { data, error } = await supabase.from("currencies").select("*").order("id");
+      if (!error && data && data.length > 0) {
+        updateCurrenciesState(data);
+      }
+      setLoadingRates(false);
+    };
 
-  // --- LÓGICA CALCULADORA 1 ---
+    fetchRates();
+
+    const channel = supabase
+      .channel("realtime-currencies")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "currencies" },
+        (payload) => {
+          if (payload.eventType === "UPDATE") {
+            const updatedRow = payload.new as Currency;
+            setCurrencies((prev) => {
+              const newCurrencies = prev.map((c) => (c.id === updatedRow.id ? updatedRow : c));
+              setOriginCurrency((cur) => (cur.id === updatedRow.id ? updatedRow : cur));
+              setTargetCurrency((cur) => (cur.id === updatedRow.id ? updatedRow : cur));
+              calculateLatestUpdateTime(newCurrencies);
+              return newCurrencies;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const calculateLatestUpdateTime = (data: Currency[]) => {
+    // Buscar la fecha de actualización más reciente entre todas las monedas
+    const timestamps = data
+      .map((c) => (c.updated_at ? new Date(c.updated_at).getTime() : 0))
+      .filter((ts) => ts > 0);
+
+    if (timestamps.length > 0) {
+      const mostRecent = new Date(Math.max(...timestamps)).toISOString();
+      setLastUpdatedTime(getRelativeTimeString(mostRecent));
+    } else {
+      setLastUpdatedTime("hace un momento");
+    }
+  };
+
+  const updateCurrenciesState = (data: Currency[]) => {
+    setCurrencies(data);
+    setOriginCurrency((prev) => data.find((c) => c.id === prev.id) || data[0]);
+    setTargetCurrency((prev) => data.find((c) => c.id === prev.id) || data[1]);
+    calculateLatestUpdateTime(data);
+  };
+
+  const currentRate = targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
+
+  // Botón de Intercambio (Switch) conservando montos y recalculando
+  const handleSwitchCurrencies = () => {
+    const newOrigin = targetCurrency;
+    const newTarget = originCurrency;
+
+    setOriginCurrency(newOrigin);
+    setTargetCurrency(newTarget);
+
+    const newRate = newTarget.rate_to_usdt / newOrigin.rate_to_usdt;
+
+    // Recalcular Tarjeta 1 si hay valor ingresado
+    if (c1Envio && !isNaN(Number(c1Envio))) {
+      setC1Recibe((parseFloat(c1Envio) * newRate).toFixed(2));
+    }
+
+    // Recalcular Tarjeta 2 si hay valor ingresado
+    if (c2Recibe && !isNaN(Number(c2Recibe))) {
+      setC2Envio((parseFloat(c2Recibe) / newRate).toFixed(2));
+    }
+  };
+
+  useEffect(() => {
+    if (c1Envio && !isNaN(Number(c1Envio))) {
+      setC1Recibe((parseFloat(c1Envio) * currentRate).toFixed(2));
+    }
+    if (c2Recibe && !isNaN(Number(c2Recibe))) {
+      setC2Envio((parseFloat(c2Recibe) / currentRate).toFixed(2));
+    }
+  }, [currentRate]);
+
   const handleC1EnvioChange = (val: string) => {
     setC1Envio(val);
     if (val === "" || isNaN(Number(val))) {
@@ -54,16 +158,6 @@ export default function Home() {
     }
   };
 
-  const handleC1RecibeChange = (val: string) => {
-    setC1Recibe(val);
-    if (val === "" || isNaN(Number(val))) {
-      setC1Envio("");
-    } else {
-      setC1Envio((parseFloat(val) / currentRate).toFixed(2));
-    }
-  };
-
-  // --- LÓGICA CALCULADORA 2 ---
   const handleC2RecibeChange = (val: string) => {
     setC2Recibe(val);
     if (val === "" || isNaN(Number(val))) {
@@ -73,16 +167,6 @@ export default function Home() {
     }
   };
 
-  const handleC2EnvioChange = (val: string) => {
-    setC2Envio(val);
-    if (val === "" || isNaN(Number(val))) {
-      setC2Recibe("");
-    } else {
-      setC2Recibe((parseFloat(val) * currentRate).toFixed(2));
-    }
-  };
-
-  // Cambio de selección de divisa en Modal
   const handleSelectCurrency = (currency: Currency) => {
     if (modalType === "origin") {
       setOriginCurrency(currency);
@@ -90,12 +174,10 @@ export default function Home() {
       setTargetCurrency(currency);
     }
     setModalType(null);
-    // Limpiar campos al cambiar de moneda
     setC1Envio(""); setC1Recibe("");
     setC2Recibe(""); setC2Envio("");
   };
 
-  // Envío a WhatsApp
   const handleWhatsAppSend = (montoEnvio: string, montoRecibo: string, tipoOperacion: string) => {
     if (!montoEnvio || parseFloat(montoEnvio) <= 0) {
       alert("Por favor ingresa un monto válido antes de consultar.");
@@ -118,15 +200,15 @@ export default function Home() {
         
         {/* ENCABEZADO Y SELECCIÓN DE PAÍSES */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="text-center space-y-1">
-            <h1 className="text-xl font-bold text-slate-100">Tasas de Envío</h1>
-            <p className="text-xs text-amber-400 font-medium bg-amber-500/10 py-1 px-3 rounded-full inline-block border border-amber-500/20">
-              ⚠️ Tasas referenciales. Se confirman al momento de la operación.
+          <div className="text-left space-y-1 border-b border-slate-800/80 pb-3">
+            <h1 className="text-2xl font-extrabold text-slate-100 tracking-tight">Tasas de envío</h1>
+            <p className="text-xs text-slate-400 font-medium">
+              {loadingRates ? "Cargando actualización..." : `Actualizado ${lastUpdatedTime}`}
             </p>
           </div>
 
-          {/* Selector de Ruta (Origen -> Destino) */}
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+          <div className="relative grid grid-cols-2 gap-3 pt-1">
+            {/* País Origen */}
             <div>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                 País Origen
@@ -143,6 +225,18 @@ export default function Home() {
               </button>
             </div>
 
+            {/* BOTÓN SWITCH DE INTERCAMBIO */}
+            <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-10">
+              <button
+                onClick={handleSwitchCurrencies}
+                title="Intercambiar países"
+                className="bg-slate-800 hover:bg-slate-700 active:scale-90 border border-slate-600/80 w-8 h-8 rounded-full flex items-center justify-center text-slate-200 shadow-lg transition-all"
+              >
+                <span className="text-xs font-bold">⇄</span>
+              </button>
+            </div>
+
+            {/* País Destino */}
             <div>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                 País Destino
@@ -161,19 +255,22 @@ export default function Home() {
           </div>
 
           <div className="text-center text-xs text-slate-400 pt-1">
-            Tasa actual: <span className="text-indigo-400 font-bold">1 {originCurrency.code} = {currentRate.toFixed(4)} {targetCurrency.code}</span>
+            {loadingRates ? (
+              <span className="animate-pulse">Cargando tasas actualizadas...</span>
+            ) : (
+              <>Tasa actual: <span className="text-indigo-400 font-bold">1 {originCurrency.code} = {currentRate.toFixed(4)} {targetCurrency.code}</span></>
+            )}
           </div>
         </div>
 
-        {/* TARJETA 1: CALCULAR CUÁNTO RECIBE SI ENVÍA UN MONTO */}
+        {/* TARJETA 1 */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
           <h2 className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2">
             Calculadora por Monto a Enviar
           </h2>
 
           <div className="space-y-3">
-            {/* Si se envían */}
-            <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3">
+            <div className="bg-slate-800/60 border border-slate-700/50 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 rounded-xl p-3 transition-all">
               <label className="text-xs font-semibold text-slate-400 block mb-1">
                 Si se envían ({originCurrency.code})
               </label>
@@ -182,21 +279,20 @@ export default function Home() {
                 placeholder="0.00"
                 value={c1Envio}
                 onChange={(e) => handleC1EnvioChange(e.target.value)}
-                className="w-full bg-transparent text-xl font-bold text-white outline-none placeholder-slate-600"
+                className="w-full bg-transparent text-xl font-bold text-white outline-none placeholder-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
 
-            {/* Se reciben */}
-            <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3">
-              <label className="text-xs font-semibold text-slate-400 block mb-1">
+            <div className="bg-slate-800/30 border border-slate-800/80 rounded-xl p-3 cursor-not-allowed">
+              <label className="text-xs font-semibold text-slate-500 block mb-1">
                 Se reciben ({targetCurrency.code})
               </label>
               <input
                 type="number"
+                readOnly
                 placeholder="0.00"
                 value={c1Recibe}
-                onChange={(e) => handleC1RecibeChange(e.target.value)}
-                className="w-full bg-transparent text-xl font-bold text-emerald-400 outline-none placeholder-slate-600"
+                className="w-full bg-transparent text-xl font-bold text-emerald-400 outline-none placeholder-slate-700 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           </div>
@@ -209,15 +305,14 @@ export default function Home() {
           </button>
         </div>
 
-        {/* TARJETA 2: CALCULAR CUÁNTO ENVIAR PARA RECIBIR MONTO EXACTO */}
+        {/* TARJETA 2 */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
           <h2 className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2">
             Calculadora por Monto a Recibir
           </h2>
 
           <div className="space-y-3">
-            {/* Para recibir */}
-            <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3">
+            <div className="bg-slate-800/60 border border-slate-700/50 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 rounded-xl p-3 transition-all">
               <label className="text-xs font-semibold text-slate-400 block mb-1">
                 Para recibir ({targetCurrency.code})
               </label>
@@ -226,21 +321,20 @@ export default function Home() {
                 placeholder="0.00"
                 value={c2Recibe}
                 onChange={(e) => handleC2RecibeChange(e.target.value)}
-                className="w-full bg-transparent text-xl font-bold text-emerald-400 outline-none placeholder-slate-600"
+                className="w-full bg-transparent text-xl font-bold text-emerald-400 outline-none placeholder-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
 
-            {/* Hay que enviar */}
-            <div className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-3">
-              <label className="text-xs font-semibold text-slate-400 block mb-1">
+            <div className="bg-slate-800/30 border border-slate-800/80 rounded-xl p-3 cursor-not-allowed">
+              <label className="text-xs font-semibold text-slate-500 block mb-1">
                 Hay que enviar ({originCurrency.code})
               </label>
               <input
                 type="number"
+                readOnly
                 placeholder="0.00"
                 value={c2Envio}
-                onChange={(e) => handleC2EnvioChange(e.target.value)}
-                className="w-full bg-transparent text-xl font-bold text-white outline-none placeholder-slate-600"
+                className="w-full bg-transparent text-xl font-bold text-white outline-none placeholder-slate-700 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
             </div>
           </div>
@@ -272,7 +366,7 @@ export default function Home() {
             </div>
 
             <div className="overflow-y-auto space-y-2 flex-1 pr-1">
-              {AVAILABLE_CURRENCIES.map((curr) => (
+              {currencies.map((curr) => (
                 <button
                   key={curr.id}
                   onClick={() => handleSelectCurrency(curr)}

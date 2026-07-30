@@ -11,149 +11,127 @@ interface Currency {
   rate_to_usdt: number;
 }
 
-export default function AdminPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [session, setSession] = useState<any>(null);
-
+export default function AdminDashboard() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Comprobar si ya hay sesión iniciada
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) fetchCurrencies();
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) fetchCurrencies();
-    });
-
-    return () => subscription.unsubscribe();
+    fetchRates();
   }, []);
 
-  const fetchCurrencies = async () => {
+  const fetchRates = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from("currencies").select("*").order("id");
-    if (error) alert("Error al cargar divisas: " + error.message);
-    else setCurrencies(data || []);
+    const { data, error } = await supabase.from("currencies").select("*").order("name");
+    if (!error && data) {
+      setCurrencies(data);
+    }
     setLoading(false);
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) alert("Error de inicio de sesión: " + error.message);
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
-  const handleRateChange = (id: string, newRate: string) => {
+  const handleRateChange = (id: string, value: string) => {
+    const numVal = parseFloat(value);
     setCurrencies((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, rate_to_usdt: parseFloat(newRate) || 0 } : c))
+      prev.map((c) => (c.id === id ? { ...c, rate_to_usdt: isNaN(numVal) ? 0 : numVal } : c))
     );
   };
 
-  const handleSaveRate = async (id: string, newRate: number) => {
-    setSavingId(id);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
+
+  const handleSave = async (currency: Currency) => {
+    setSavingId(currency.id);
     const { error } = await supabase
       .from("currencies")
-      .update({ rate_to_usdt: newRate, updated_at: new Date().toISOString() })
-      .eq("id", id);
+      .update({ 
+      rate_to_usdt: currency.rate_to_usdt,
+      updated_at: new Date().toISOString() // 👈 Sincroniza la fecha exacta
+    })
+      .eq("id", currency.id);
 
     if (error) {
-      alert("Error guardando la tasa: " + error.message);
+      showToast("❌ Error al actualizar la tasa");
     } else {
-      alert("Tasa actualizada con éxito.");
+      showToast(`✨ Tasa de ${currency.name} modificada exitosamente`);
     }
     setSavingId(null);
   };
 
-  if (!session) {
-    return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-        <form onSubmit={handleLogin} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-sm space-y-4">
-          <h1 className="text-xl font-bold text-center">Panel Admin - Iniciar Sesión</h1>
-          <div>
-            <label className="text-xs text-slate-400 block mb-1">Correo Electrónico</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none focus:border-indigo-500"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-slate-400 block mb-1">Contraseña</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none focus:border-indigo-500"
-            />
-          </div>
-          <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-lg text-sm transition-colors">
-            Entrar al Panel
-          </button>
-        </form>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-4 py-8 flex flex-col items-center">
-      <div className="w-full max-w-md space-y-6">
-        <div className="flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+    <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center p-4 py-8 relative">
+      
+      {/* NOTIFICACIÓN TOAST EN TIEMPO REAL */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md text-xs font-bold flex items-center gap-2 transition-all animate-bounce">
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      <div className="w-full max-w-md space-y-4">
+        
+        {/* ENCABEZADO ADMIN */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex justify-between items-center">
           <div>
-            <h1 className="font-bold text-base">Gestión de Tasas</h1>
-            <p className="text-xs text-slate-400">{session.user.email}</p>
+            <h1 className="text-lg font-bold text-slate-100">Gestión de Tasas</h1>
+            <p className="text-xs text-slate-400">admin@calculadora.com</p>
           </div>
-          <button onClick={handleLogout} className="bg-rose-600/20 text-rose-400 text-xs font-bold px-3 py-1.5 rounded-lg border border-rose-500/30">
+          <button
+            onClick={() => supabase.auth.signOut()}
+            className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors"
+          >
             Salir
           </button>
         </div>
 
+        {/* LISTA DE MONEDAS */}
         {loading ? (
-          <p className="text-center text-slate-400 text-sm">Cargando divisas...</p>
+          <div className="text-center py-8 text-slate-400 text-sm animate-pulse">
+            Cargando tasas...
+          </div>
         ) : (
-          <div className="space-y-3">
-            {currencies.map((curr) => (
-              <div key={curr.id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{curr.flag}</span>
-                  <div>
-                    <p className="font-bold text-sm">{curr.name}</p>
-                    <p className="text-xs text-slate-400">{curr.code}</p>
-                  </div>
+          currencies.map((currency) => (
+            <div
+              key={currency.id}
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center justify-between gap-3"
+            >
+              {/* Información del País */}
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-2xl">{currency.flag}</span>
+                <div className="truncate">
+                  <h3 className="text-sm font-bold text-slate-100 truncate">{currency.name}</h3>
+                  <p className="text-xs text-slate-400 font-semibold">{currency.code}</p>
                 </div>
+              </div>
 
-                <div className="flex items-center gap-2">
+              {/* Input y Botón Guardar */}
+              <div className="flex items-center gap-2">
+                <div className="relative border border-slate-800/80 rounded-xl bg-slate-950/60 transition-all focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
                   <input
                     type="number"
                     step="any"
-                    value={curr.rate_to_usdt}
-                    onChange={(e) => handleRateChange(curr.id, e.target.value)}
-                    className="w-24 bg-slate-800 border border-slate-700 rounded-lg p-2 text-right text-sm font-bold text-indigo-400 outline-none"
+                    value={currency.rate_to_usdt === 0 ? "" : currency.rate_to_usdt}
+                    onChange={(e) => handleRateChange(currency.id, e.target.value)}
+                    className="w-24 bg-transparent text-indigo-400 font-bold text-right p-2.5 rounded-xl outline-none text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
-                  <button
-                    onClick={() => handleSaveRate(curr.id, curr.rate_to_usdt)}
-                    disabled={savingId === curr.id}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
-                  >
-                    {savingId === curr.id ? "..." : "Guardar"}
-                  </button>
                 </div>
+
+                <button
+                  onClick={() => handleSave(currency)}
+                  disabled={savingId === currency.id}
+                  className="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs py-2.5 px-4 rounded-xl shadow-md transition-all disabled:opacity-50"
+                >
+                  {savingId === currency.id ? "..." : "Guardar"}
+                </button>
               </div>
-            ))}
-          </div>
+            </div>
+          ))
         )}
+
       </div>
     </main>
   );
