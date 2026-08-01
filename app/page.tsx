@@ -22,7 +22,6 @@ const DEFAULT_CURRENCIES: Currency[] = [
   { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98 },
 ];
 
-// Función para formatear el tiempo transcurrido
 function getRelativeTimeString(dateString?: string): string {
   if (!dateString) return "recientemente";
 
@@ -54,11 +53,12 @@ export default function Home() {
   const [c2Recibe, setC2Recibe] = useState<string>("");
   const [c2Envio, setC2Envio] = useState<string>("");
 
+  // ESTADOS DEL MODAL Y ANIMACIÓN DE SALIDA
   const [modalType, setModalType] = useState<"origin" | "target" | null>(null);
+  const [isClosingModal, setIsClosingModal] = useState<boolean>(false);
 
   const PHONE_NUMBER = "584127591543";
 
-  // Cargar y escuchar cambios en tiempo real
   useEffect(() => {
     const fetchRates = async () => {
       setLoadingRates(true);
@@ -97,7 +97,6 @@ export default function Home() {
   }, []);
 
   const calculateLatestUpdateTime = (data: Currency[]) => {
-    // Buscar la fecha de actualización más reciente entre todas las monedas
     const timestamps = data
       .map((c) => (c.updated_at ? new Date(c.updated_at).getTime() : 0))
       .filter((ts) => ts > 0);
@@ -119,7 +118,6 @@ export default function Home() {
 
   const currentRate = targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
 
-  // Botón de Intercambio (Switch) conservando montos y recalculando
   const handleSwitchCurrencies = () => {
     const newOrigin = targetCurrency;
     const newTarget = originCurrency;
@@ -129,12 +127,10 @@ export default function Home() {
 
     const newRate = newTarget.rate_to_usdt / newOrigin.rate_to_usdt;
 
-    // Recalcular Tarjeta 1 si hay valor ingresado
     if (c1Envio && !isNaN(Number(c1Envio))) {
       setC1Recibe((parseFloat(c1Envio) * newRate).toFixed(2));
     }
 
-    // Recalcular Tarjeta 2 si hay valor ingresado
     if (c2Recibe && !isNaN(Number(c2Recibe))) {
       setC2Envio((parseFloat(c2Recibe) / newRate).toFixed(2));
     }
@@ -149,33 +145,61 @@ export default function Home() {
     }
   }, [currentRate]);
 
+  const sanitizePositiveNumber = (val: string): string => {
+    let clean = val.replace(/[^0-9.]/g, "");
+    const parts = clean.split(".");
+    if (parts.length > 2) {
+      clean = parts[0] + "." + parts.slice(1).join("");
+    }
+    return clean;
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (["e", "E", "-", "+"].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
+
   const handleC1EnvioChange = (val: string) => {
-    setC1Envio(val);
-    if (val === "" || isNaN(Number(val))) {
+    const cleanVal = sanitizePositiveNumber(val);
+    setC1Envio(cleanVal);
+    if (cleanVal === "" || isNaN(Number(cleanVal))) {
       setC1Recibe("");
     } else {
-      setC1Recibe((parseFloat(val) * currentRate).toFixed(2));
+      setC1Recibe((parseFloat(cleanVal) * currentRate).toFixed(2));
     }
   };
 
   const handleC2RecibeChange = (val: string) => {
-    setC2Recibe(val);
-    if (val === "" || isNaN(Number(val))) {
+    const cleanVal = sanitizePositiveNumber(val);
+    setC2Recibe(cleanVal);
+    if (cleanVal === "" || isNaN(Number(cleanVal))) {
       setC2Envio("");
     } else {
-      setC2Envio((parseFloat(val) / currentRate).toFixed(2));
+      setC2Envio((parseFloat(cleanVal) / currentRate).toFixed(2));
     }
   };
 
+  // FUNCIÓN CON TRANSICIÓN DE SALIDA
+  const closeModalWithAnimation = (callback?: () => void) => {
+    setIsClosingModal(true);
+    setTimeout(() => {
+      if (callback) callback();
+      setModalType(null);
+      setIsClosingModal(false);
+    }, 280); // Duración equivalente a la animación de salida
+  };
+
   const handleSelectCurrency = (currency: Currency) => {
-    if (modalType === "origin") {
-      setOriginCurrency(currency);
-    } else if (modalType === "target") {
-      setTargetCurrency(currency);
-    }
-    setModalType(null);
-    setC1Envio(""); setC1Recibe("");
-    setC2Recibe(""); setC2Envio("");
+    closeModalWithAnimation(() => {
+      if (modalType === "origin") {
+        setOriginCurrency(currency);
+      } else if (modalType === "target") {
+        setTargetCurrency(currency);
+      }
+      setC1Envio(""); setC1Recibe("");
+      setC2Recibe(""); setC2Envio("");
+    });
   };
 
   const handleWhatsAppSend = (montoEnvio: string, montoRecibo: string, tipoOperacion: string) => {
@@ -195,193 +219,308 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-start p-4 py-8">
-      <div className="w-full max-w-md space-y-6">
+    <main className="min-h-screen bg-[#121212] text-[#f4f1ea] flex flex-col items-center justify-between p-4 sm:p-8 lg:p-12 antialiased selection:bg-[#b58e45] selection:text-[#121212]">
+      
+      {/* CONTENEDOR PRINCIPAL */}
+      <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl space-y-6 sm:space-y-8">
         
-        {/* ENCABEZADO Y SELECCIÓN DE PAÍSES */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <div className="text-left space-y-1 border-b border-slate-800/80 pb-3">
-            <h1 className="text-2xl font-extrabold text-slate-100 tracking-tight">Tasas de envío</h1>
-            <p className="text-xs text-slate-400 font-medium">
+        {/* 1. ENCABEZADO Y LOGO */}
+        <header className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 text-center">
+          <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shrink-0">
+            <img
+              src="/logo.png"
+              alt="AON Pay Logo"
+              className="w-full h-full object-contain"
+            />
+          </div>
+          <span className="text-3xl sm:text-4xl font-extrabold tracking-wide text-[#f4f1ea] leading-tight">
+            AON <span className="text-[#b58e45]">Pay</span>
+          </span>
+        </header>
+
+        {/* 2. DISCLAIMER */}
+        <div className="bg-[#b58e45]/10 border border-[#b58e45]/30 rounded-2xl p-4 sm:p-5 flex items-center gap-3.5 text-xs sm:text-sm text-[#f4f1ea]/90 shadow-sm w-full">
+          <span className="text-[#b58e45] text-lg shrink-0 select-none">⚠️</span>
+          <p className="leading-relaxed">
+            <strong className="text-[#b58e45] font-semibold">Tasas referenciales.</strong> Se confirman al momento de la operación y pueden variar según el monto y destino.
+          </p>
+        </div>
+
+        {/* 3. SELECCIÓN DE PAÍSES */}
+        <section className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-5 sm:p-8 shadow-2xl space-y-5 w-full">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#121212]/40 pb-4">
+            <h1 className="text-base sm:text-xl font-bold text-[#f4f1ea] tracking-tight">
+              Tasas de envío en tiempo real
+            </h1>
+            <p className="text-xs sm:text-sm text-[#f4f1ea]/60 font-medium">
               {loadingRates ? "Cargando actualización..." : `Actualizado ${lastUpdatedTime}`}
             </p>
           </div>
 
-          <div className="relative grid grid-cols-2 gap-3 pt-1">
+          <div className="relative grid grid-cols-2 gap-4 sm:gap-8 pt-1">
             {/* País Origen */}
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#f4f1ea]/70 uppercase tracking-wider block">
                 País Origen
-              </span>
+              </label>
               <button
                 onClick={() => setModalType("origin")}
-                className="w-full flex items-center justify-between bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 p-2.5 rounded-xl transition-colors"
+                className="w-full min-h-[52px] sm:min-h-[60px] flex items-center justify-between bg-[#121212]/60 hover:bg-[#121212]/80 active:bg-[#121212] border border-[#b58e45]/30 px-4 py-3 rounded-xl transition-all focus:ring-2 focus:ring-[#b58e45] outline-none"
               >
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <span className="text-lg">{originCurrency.flag}</span>
-                  <span className="text-xs font-bold truncate">{originCurrency.code}</span>
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <span className="text-2xl sm:text-3xl leading-none">{originCurrency.flag}</span>
+                  <span className="text-sm sm:text-base font-bold truncate text-[#f4f1ea]">{originCurrency.code}</span>
                 </div>
-                <span className="text-slate-400 text-xs">▼</span>
+                <span className="text-[#b58e45] text-xs ml-1">▼</span>
               </button>
             </div>
 
-            {/* BOTÓN SWITCH DE INTERCAMBIO */}
+            {/* BOTÓN SWITCH */}
             <div className="absolute left-1/2 top-[58%] -translate-x-1/2 -translate-y-1/2 z-10">
               <button
                 onClick={handleSwitchCurrencies}
                 title="Intercambiar países"
-                className="bg-slate-800 hover:bg-slate-700 active:scale-90 border border-slate-600/80 w-8 h-8 rounded-full flex items-center justify-center text-slate-200 shadow-lg transition-all"
+                className="bg-[#121212] hover:bg-[#8b6d32] hover:text-[#f4f1ea] active:scale-95 border border-[#b58e45]/50 w-12 h-12 rounded-full flex items-center justify-center text-[#b58e45] shadow-2xl transition-all focus:ring-2 focus:ring-[#b58e45] outline-none"
               >
-                <span className="text-xs font-bold">⇄</span>
+                <span className="text-base font-bold select-none">⇄</span>
               </button>
             </div>
 
             {/* País Destino */}
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-[#f4f1ea]/70 uppercase tracking-wider block">
                 País Destino
-              </span>
+              </label>
               <button
                 onClick={() => setModalType("target")}
-                className="w-full flex items-center justify-between bg-slate-800 hover:bg-slate-700/80 border border-slate-700/60 p-2.5 rounded-xl transition-colors"
+                className="w-full min-h-[52px] sm:min-h-[60px] flex items-center justify-between bg-[#121212]/60 hover:bg-[#121212]/80 active:bg-[#121212] border border-[#b58e45]/30 px-4 py-3 rounded-xl transition-all focus:ring-2 focus:ring-[#b58e45] outline-none"
               >
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <span className="text-lg">{targetCurrency.flag}</span>
-                  <span className="text-xs font-bold truncate">{targetCurrency.code}</span>
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <span className="text-2xl sm:text-3xl leading-none">{targetCurrency.flag}</span>
+                  <span className="text-sm sm:text-base font-bold truncate text-[#f4f1ea]">{targetCurrency.code}</span>
                 </div>
-                <span className="text-slate-400 text-xs">▼</span>
+                <span className="text-[#b58e45] text-xs ml-1">▼</span>
               </button>
             </div>
           </div>
 
-          <div className="text-center text-xs text-slate-400 pt-1">
+          <div className="text-center text-sm sm:text-base text-[#f4f1ea]/80 pt-2 font-medium">
             {loadingRates ? (
               <span className="animate-pulse">Cargando tasas actualizadas...</span>
             ) : (
-              <>Tasa actual: <span className="text-indigo-400 font-bold">1 {originCurrency.code} = {currentRate.toFixed(4)} {targetCurrency.code}</span></>
+              <>Tasa actual: <span className="text-[#b58e45] font-bold text-base sm:text-lg">1 {originCurrency.code} = {currentRate.toFixed(4)} {targetCurrency.code}</span></>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* TARJETA 1 */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <h2 className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2">
-            Calculadora por Monto a Enviar
-          </h2>
+        {/* 4. CALCULADORAS */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 w-full">
+          
+          {/* CALCULADORA 1 */}
+          <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-6">
+            <div className="space-y-5">
+              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#b58e45] border-b border-[#121212]/40 pb-3">
+                Calculadora por Monto a Enviar
+              </h2>
 
-          <div className="space-y-3">
-            <div className="bg-slate-800/60 border border-slate-700/50 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 rounded-xl p-3 transition-all">
-              <label className="text-xs font-semibold text-slate-400 block mb-1">
-                Si se envían ({originCurrency.code})
-              </label>
-              <input
-                type="number"
-                placeholder="0.00"
-                value={c1Envio}
-                onChange={(e) => handleC1EnvioChange(e.target.value)}
-                className="w-full bg-transparent text-xl font-bold text-white outline-none placeholder-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
+              <div className="space-y-4">
+                <div className="bg-[#121212]/50 border border-[#b58e45]/20 focus-within:border-[#b58e45] rounded-xl p-4 transition-all">
+                  <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/70 block mb-1">
+                    Si se envían ({originCurrency.code})
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={c1Envio}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => handleC1EnvioChange(e.target.value)}
+                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
+                  />
+                </div>
+
+                <div className="bg-[#121212]/20 border border-[#121212]/60 rounded-xl p-4 cursor-not-allowed">
+                  <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/40 block mb-1">
+                    Se reciben ({targetCurrency.code})
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="0.00"
+                    value={c1Recibe}
+                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/20 cursor-not-allowed text-base"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="bg-slate-800/30 border border-slate-800/80 rounded-xl p-3 cursor-not-allowed">
-              <label className="text-xs font-semibold text-slate-500 block mb-1">
-                Se reciben ({targetCurrency.code})
-              </label>
-              <input
-                type="number"
-                readOnly
-                placeholder="0.00"
-                value={c1Recibe}
-                className="w-full bg-transparent text-xl font-bold text-emerald-400 outline-none placeholder-slate-700 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-            </div>
+            {/* BOTÓN ORO VIEJO CORPORATIVO */}
+            <button
+              onClick={() => handleWhatsAppSend(c1Envio, c1Recibe, "Monto a Enviar")}
+              className="w-full min-h-[52px] bg-[#b58e45] hover:bg-[#8b6d32] active:scale-[0.98] text-[#121212] hover:text-[#f4f1ea] font-extrabold py-3.5 px-5 rounded-xl shadow-lg transition-all text-sm sm:text-base flex items-center justify-center gap-3 focus:ring-2 focus:ring-offset-2 focus:ring-[#b58e45] outline-none"
+            >
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+              </svg>
+              <span className="truncate">Confirmar cambio por WhatsApp</span>
+            </button>
           </div>
 
-          <button
-            onClick={() => handleWhatsAppSend(c1Envio, c1Recibe, "Monto a Enviar")}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] text-sm flex items-center justify-center gap-2"
-          >
-            <span>Consultar este envío por WhatsApp</span>
-          </button>
-        </div>
+          {/* CALCULADORA 2 */}
+          <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-6">
+            <div className="space-y-5">
+              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#b58e45] border-b border-[#121212]/40 pb-3">
+                Calculadora por Monto a Recibir
+              </h2>
 
-        {/* TARJETA 2 */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
-          <h2 className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2">
-            Calculadora por Monto a Recibir
-          </h2>
+              <div className="space-y-4">
+                <div className="bg-[#121212]/50 border border-[#b58e45]/20 focus-within:border-[#b58e45] rounded-xl p-4 transition-all">
+                  <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/70 block mb-1">
+                    Para recibir ({targetCurrency.code})
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={c2Recibe}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => handleC2RecibeChange(e.target.value)}
+                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/30 text-base"
+                  />
+                </div>
 
-          <div className="space-y-3">
-            <div className="bg-slate-800/60 border border-slate-700/50 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 rounded-xl p-3 transition-all">
-              <label className="text-xs font-semibold text-slate-400 block mb-1">
-                Para recibir ({targetCurrency.code})
-              </label>
-              <input
-                type="number"
-                placeholder="0.00"
-                value={c2Recibe}
-                onChange={(e) => handleC2RecibeChange(e.target.value)}
-                className="w-full bg-transparent text-xl font-bold text-emerald-400 outline-none placeholder-slate-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
+                <div className="bg-[#121212]/20 border border-[#121212]/60 rounded-xl p-4 cursor-not-allowed">
+                  <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/40 block mb-1">
+                    Hay que enviar ({originCurrency.code})
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="0.00"
+                    value={c2Envio}
+                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/20 cursor-not-allowed text-base"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="bg-slate-800/30 border border-slate-800/80 rounded-xl p-3 cursor-not-allowed">
-              <label className="text-xs font-semibold text-slate-500 block mb-1">
-                Hay que enviar ({originCurrency.code})
-              </label>
-              <input
-                type="number"
-                readOnly
-                placeholder="0.00"
-                value={c2Envio}
-                className="w-full bg-transparent text-xl font-bold text-white outline-none placeholder-slate-700 cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-            </div>
+            {/* BOTÓN ORO VIEJO CORPORATIVO */}
+            <button
+              onClick={() => handleWhatsAppSend(c2Envio, c2Recibe, "Monto a Recibir")}
+              className="w-full min-h-[52px] bg-[#b58e45] hover:bg-[#8b6d32] active:scale-[0.98] text-[#121212] hover:text-[#f4f1ea] font-extrabold py-3.5 px-5 rounded-xl shadow-lg transition-all text-sm sm:text-base flex items-center justify-center gap-3 focus:ring-2 focus:ring-offset-2 focus:ring-[#b58e45] outline-none"
+            >
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+              </svg>
+              <span className="truncate">Confirmar cambio por WhatsApp</span>
+            </button>
           </div>
 
-          <button
-            onClick={() => handleWhatsAppSend(c2Envio, c2Recibe, "Monto a Recibir")}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] text-sm flex items-center justify-center gap-2"
-          >
-            <span>Consultar este envío por WhatsApp</span>
-          </button>
-        </div>
+        </section>
 
       </div>
 
-      {/* MODAL SELECTOR DE PAÍS */}
+      {/* FOOTER */}
+      <footer className="w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl pt-8 mt-10 border-t border-[#b58e45]/20 text-center space-y-1">
+        <p className="text-xs sm:text-sm text-[#f4f1ea]/60 font-medium">
+          © 2026 <strong className="text-[#f4f1ea]">AON Pay</strong> ·{" "}
+          <a
+            href="https://aonpay.com"
+            target="_blank"
+            rel="noreferrer"
+            className="hover:underline text-[#b58e45] transition-colors"
+          >
+            aonpay.com
+          </a>
+        </p>
+      </footer>
+
+      {/* MODAL SELECTOR DE PAÍS CON TRANSICIÓN 3D DE ENTRADA Y SALIDA */}
       {modalType !== null && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 space-y-4 max-h-[80vh] flex flex-col">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-sm text-slate-100">
+        <div
+          className={`fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 transition-opacity duration-300 ${
+            isClosingModal ? "opacity-0 pointer-events-none" : "opacity-100"
+          }`}
+          onClick={() => closeModalWithAnimation()}
+        >
+          {/* Estilos para animaciones 3D bidireccionales */}
+          <style jsx>{`
+            @keyframes modal3dIn {
+              0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(24px) rotateX(-12deg);
+              }
+              100% {
+                opacity: 1;
+                transform: scale(1) translateY(0) rotateX(0deg);
+              }
+            }
+
+            @keyframes modal3dOut {
+              0% {
+                opacity: 1;
+                transform: scale(1) translateY(0) rotateX(0deg);
+              }
+              100% {
+                opacity: 0;
+                transform: scale(0.8) translateY(24px) rotateX(-12deg);
+              }
+            }
+
+            .modal-in {
+              animation: modal3dIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+              perspective: 1000px;
+              transform-style: preserve-3d;
+            }
+
+            .modal-out {
+              animation: modal3dOut 0.28s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+              perspective: 1000px;
+              transform-style: preserve-3d;
+            }
+          `}</style>
+
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className={`${
+              isClosingModal ? "modal-out" : "modal-in"
+            } bg-[#2c2e30] border border-[#b58e45]/40 w-full max-w-sm sm:max-w-md rounded-2xl p-5 sm:p-6 space-y-4 max-h-[80vh] flex flex-col shadow-[0_25px_60px_rgba(0,0,0,0.85)] border-t-[#b58e45]/70`}
+          >
+            
+            {/* ENCABEZADO MODAL */}
+            <div className="flex justify-between items-center border-b border-[#121212]/50 pb-3">
+              <h3 className="font-bold text-base sm:text-lg text-[#f4f1ea] tracking-tight">
                 Selecciona País de {modalType === "origin" ? "Origen" : "Destino"}
               </h3>
               <button
-                onClick={() => setModalType(null)}
-                className="text-slate-400 hover:text-white text-sm font-bold p-1"
+                onClick={() => closeModalWithAnimation()}
+                className="text-[#f4f1ea]/60 hover:text-[#b58e45] min-w-[36px] min-h-[36px] flex items-center justify-center font-bold text-lg rounded-lg transition-colors hover:bg-[#121212]/50"
               >
                 ✕
               </button>
             </div>
 
+            {/* LISTA DE PAÍSES */}
             <div className="overflow-y-auto space-y-2 flex-1 pr-1">
               {currencies.map((curr) => (
                 <button
                   key={curr.id}
                   onClick={() => handleSelectCurrency(curr)}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 border border-slate-700/40 transition-colors text-left"
+                  className="w-full min-h-[52px] flex items-center justify-between p-3.5 rounded-xl bg-[#121212]/40 hover:bg-[#121212]/80 border border-[#b58e45]/15 hover:border-[#b58e45]/50 transition-all text-left outline-none group active:scale-[0.98]"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{curr.flag}</span>
+                  <div className="flex items-center gap-3.5">
+                    <span className="text-2xl sm:text-3xl leading-none">{curr.flag}</span>
                     <div>
-                      <p className="font-semibold text-sm text-slate-100">{curr.name}</p>
-                      <p className="text-xs text-slate-400">{curr.code}</p>
+                      <p className="font-bold text-sm text-[#f4f1ea] group-hover:text-[#b58e45] transition-colors">
+                        {curr.name}
+                      </p>
+                      <p className="text-xs font-semibold text-[#b58e45]/80">{curr.code}</p>
                     </div>
                   </div>
                 </button>
               ))}
             </div>
+
           </div>
         </div>
       )}
