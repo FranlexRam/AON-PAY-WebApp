@@ -46,9 +46,10 @@ function getRelativeTimeString(dateString?: string): string {
   return `hace ${hours}h ${minutes}min`;
 }
 
-// FORMATO PARA INPUTS Y RESULTADOS (MILES + 2 DECIMALES)
+// FORMATO PARA NUMEROS (MILES CON COMA Y DECIMALES CON PUNTO)
 function formatNumber(value: number | string): string {
-  const num = typeof value === "string" ? parseFloat(value) : value;
+  const cleanStr = typeof value === "string" ? value.replace(/,/g, "") : value.toString();
+  const num = parseFloat(cleanStr);
   if (isNaN(num)) return "";
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
@@ -56,7 +57,7 @@ function formatNumber(value: number | string): string {
   }).format(num);
 }
 
-// FORMATO DINÁMICO PARA TASA ACTUAL
+// FORMATO PARA TASA ACTUAL
 function formatRate(rate: number): string {
   if (isNaN(rate)) return "0";
   return new Intl.NumberFormat("en-US", {
@@ -73,11 +74,11 @@ export default function Home() {
   const [originCurrency, setOriginCurrency] = useState<Currency>(DEFAULT_CURRENCIES[0]);
   const [targetCurrency, setTargetCurrency] = useState<Currency>(DEFAULT_CURRENCIES[1]);
 
-  // CALCULADORA 1: ESTADOS
+  // CALCULADORA 1: ESTADOS (MONTO A ENVIAR)
   const [c1Envio, setC1Envio] = useState<string>("");
   const [c1Recibe, setC1Recibe] = useState<string>("");
 
-  // CALCULADORA 2: ESTADOS
+  // CALCULADORA 2: ESTADOS (MONTO A RECIBIR)
   const [c2Recibe, setC2Recibe] = useState<string>("");
   const [c2RecibeUsd, setC2RecibeUsd] = useState<string>("");
   const [c2Envio, setC2Envio] = useState<string>("");
@@ -224,7 +225,7 @@ export default function Home() {
     }
   };
 
-  // --- HANDLERS CALCULADORA 1 ---
+  // --- HANDLERS CALCULADORA MONTO A ENVIAR ---
   const handleC1EnvioChange = (val: string) => {
     const cleanVal = sanitizePositiveNumber(val);
     setC1Envio(cleanVal);
@@ -237,7 +238,13 @@ export default function Home() {
     }
   };
 
-  // --- HANDLERS CALCULADORA 2 ---
+  const handleC1EnvioBlur = () => {
+    if (c1Envio) {
+      setC1Envio(formatNumber(c1Envio));
+    }
+  };
+
+  // --- HANDLERS CALCULADORA MONTO A RECIBIR ---
   const handleC2RecibeChange = (val: string) => {
     const cleanVal = sanitizePositiveNumber(val);
     setC2Recibe(cleanVal);
@@ -255,6 +262,12 @@ export default function Home() {
     }
   };
 
+  const handleC2RecibeBlur = () => {
+    if (c2Recibe) {
+      setC2Recibe(formatNumber(c2Recibe));
+    }
+  };
+
   const handleC2RecibeUsdChange = (val: string) => {
     const cleanVal = sanitizePositiveNumber(val);
     setC2RecibeUsd(cleanVal);
@@ -268,6 +281,12 @@ export default function Home() {
 
       setC2Recibe(formatNumber(vesCalculados));
       setC2Envio(formatNumber(vesCalculados / currentRate));
+    }
+  };
+
+  const handleC2RecibeUsdBlur = () => {
+    if (c2RecibeUsd) {
+      setC2RecibeUsd(formatNumber(c2RecibeUsd));
     }
   };
 
@@ -418,7 +437,91 @@ export default function Home() {
         {/* CALCULADORAS */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 w-full">
           
-          {/* CALCULADORA 1 */}
+          {/* 1. CALCULADORA POR MONTO A RECIBIR */}
+          <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-6">
+            <div className="space-y-5">
+              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#b58e45] border-b border-[#121212]/40 pb-3">
+                Calculadora por Monto a Recibir
+              </h2>
+
+              <div className="space-y-4">
+                {targetCurrency.code === "VES" && (
+                  <div className="bg-[#121212]/50 border border-[#b58e45]/30 focus-within:border-[#b58e45] rounded-xl p-4 transition-all">
+                    <label className="text-xs sm:text-sm font-semibold text-[#b58e45] flex items-center justify-between mb-1">
+                      <span>Para recibir (USD en Venezuela - BCV)</span>
+                      <span className="text-[10px] bg-[#b58e45]/20 px-2 py-0.5 rounded text-[#f4f1ea] font-bold">Oficial</span>
+                    </label>
+                    <div className="relative flex items-center">
+                      <span className="text-xl sm:text-2xl font-bold text-[#b58e45] mr-1.5">$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="0.00"
+                        value={c2RecibeUsd}
+                        onKeyDown={handleKeyDown}
+                        onChange={(e) => handleC2RecibeUsdChange(e.target.value)}
+                        onBlur={handleC2RecibeUsdBlur}
+                        onFocus={() => setC2RecibeUsd((prev) => prev.replace(/,/g, ""))}
+                        className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-[#121212]/50 border border-[#b58e45]/20 focus-within:border-[#b58e45] rounded-xl p-4 transition-all">
+                  <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/70 block mb-1">
+                    Para recibir ({targetCurrency.code})
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={c2Recibe}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => handleC2RecibeChange(e.target.value)}
+                    onBlur={handleC2RecibeBlur}
+                    onFocus={() => setC2Recibe((prev) => prev.replace(/,/g, ""))}
+                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/30 text-base"
+                  />
+                  {targetCurrency.code === "VES" && c2Recibe && calculateBcvUsdEquivalent(c2Recibe) && (
+                    <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
+                      ≈ ${calculateBcvUsdEquivalent(c2Recibe)} USD al cambio oficial BCV
+                    </p>
+                  )}
+                </div>
+
+                <div className="bg-[#b58e45]/10 border border-[#b58e45]/50 rounded-xl p-4 shadow-[0_0_15px_rgba(181,142,69,0.1)] transition-all">
+                  <label className="text-xs sm:text-sm font-bold text-[#b58e45] block mb-1">
+                    Hay que enviar ({originCurrency.code})
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    placeholder="0.00"
+                    value={c2Envio}
+                    className="w-full bg-transparent text-xl sm:text-2xl font-extrabold text-[#f4f1ea] outline-none cursor-not-allowed text-base"
+                  />
+                  {originCurrency.code === "VES" && c2Envio && calculateBcvUsdEquivalent(c2Envio) && (
+                    <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
+                      ≈ ${calculateBcvUsdEquivalent(c2Envio)} USD al cambio oficial BCV
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => handleWhatsAppSend(c2Envio, c2Recibe, "Monto a Recibir")}
+              className="w-full min-h-[52px] bg-[#b58e45] hover:bg-[#8b6d32] active:scale-[0.98] text-[#121212] hover:text-[#f4f1ea] font-extrabold py-3.5 px-5 rounded-xl shadow-lg transition-all text-sm sm:text-base flex items-center justify-center gap-3 focus:ring-2 focus:ring-offset-2 focus:ring-[#b58e45] outline-none cursor-pointer"
+            >
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
+              </svg>
+              <span className="truncate">Confirmar cambio por WhatsApp</span>
+            </button>
+          </div>
+
+          {/* 2. CALCULADORA POR MONTO A ENVIAR */}
           <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-6">
             <div className="space-y-5">
               <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#b58e45] border-b border-[#121212]/40 pb-3">
@@ -437,6 +540,8 @@ export default function Home() {
                     value={c1Envio}
                     onKeyDown={handleKeyDown}
                     onChange={(e) => handleC1EnvioChange(e.target.value)}
+                    onBlur={handleC1EnvioBlur}
+                    onFocus={() => setC1Envio((prev) => prev.replace(/,/g, ""))}
                     className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
                   />
                 </div>
@@ -468,86 +573,6 @@ export default function Home() {
 
             <button
               onClick={() => handleWhatsAppSend(c1Envio, c1Recibe, "Monto a Enviar")}
-              className="w-full min-h-[52px] bg-[#b58e45] hover:bg-[#8b6d32] active:scale-[0.98] text-[#121212] hover:text-[#f4f1ea] font-extrabold py-3.5 px-5 rounded-xl shadow-lg transition-all text-sm sm:text-base flex items-center justify-center gap-3 focus:ring-2 focus:ring-offset-2 focus:ring-[#b58e45] outline-none cursor-pointer"
-            >
-              <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current shrink-0" viewBox="0 0 24 24">
-                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" />
-              </svg>
-              <span className="truncate">Confirmar cambio por WhatsApp</span>
-            </button>
-          </div>
-
-          {/* CALCULADORA 2 */}
-          <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-6 sm:p-8 shadow-xl flex flex-col justify-between space-y-6">
-            <div className="space-y-5">
-              <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#b58e45] border-b border-[#121212]/40 pb-3">
-                Calculadora por Monto a Recibir
-              </h2>
-
-              <div className="space-y-4">
-                {targetCurrency.code === "VES" && (
-                  <div className="bg-[#121212]/50 border border-[#b58e45]/30 focus-within:border-[#b58e45] rounded-xl p-4 transition-all">
-                    <label className="text-xs sm:text-sm font-semibold text-[#b58e45] flex items-center justify-between mb-1">
-                      <span>Para recibir (USD en Venezuela - BCV)</span>
-                      <span className="text-[10px] bg-[#b58e45]/20 px-2 py-0.5 rounded text-[#f4f1ea] font-bold">Oficial</span>
-                    </label>
-                    <div className="relative flex items-center">
-                      <span className="text-xl sm:text-2xl font-bold text-[#b58e45] mr-1.5">$</span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        value={c2RecibeUsd}
-                        onKeyDown={handleKeyDown}
-                        onChange={(e) => handleC2RecibeUsdChange(e.target.value)}
-                        className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="bg-[#121212]/50 border border-[#b58e45]/20 focus-within:border-[#b58e45] rounded-xl p-4 transition-all">
-                  <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/70 block mb-1">
-                    Para recibir ({targetCurrency.code})
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={c2Recibe}
-                    onKeyDown={handleKeyDown}
-                    onChange={(e) => handleC2RecibeChange(e.target.value)}
-                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/30 text-base"
-                  />
-                  {targetCurrency.code === "VES" && c2Recibe && calculateBcvUsdEquivalent(c2Recibe) && (
-                    <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
-                      ≈ ${calculateBcvUsdEquivalent(c2Recibe)} USD al cambio oficial BCV
-                    </p>
-                  )}
-                </div>
-
-                <div className="bg-[#121212]/20 border border-[#121212]/60 rounded-xl p-4 cursor-not-allowed">
-                  <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/40 block mb-1">
-                    Hay que enviar ({originCurrency.code})
-                  </label>
-                  <input
-                    type="text"
-                    readOnly
-                    placeholder="0.00"
-                    value={c2Envio}
-                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/20 cursor-not-allowed text-base"
-                  />
-                  {originCurrency.code === "VES" && c2Envio && calculateBcvUsdEquivalent(c2Envio) && (
-                    <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
-                      ≈ ${calculateBcvUsdEquivalent(c2Envio)} USD al cambio oficial BCV
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => handleWhatsAppSend(c2Envio, c2Recibe, "Monto a Recibir")}
               className="w-full min-h-[52px] bg-[#b58e45] hover:bg-[#8b6d32] active:scale-[0.98] text-[#121212] hover:text-[#f4f1ea] font-extrabold py-3.5 px-5 rounded-xl shadow-lg transition-all text-sm sm:text-base flex items-center justify-center gap-3 focus:ring-2 focus:ring-offset-2 focus:ring-[#b58e45] outline-none cursor-pointer"
             >
               <svg className="w-5 h-5 sm:w-6 sm:h-6 fill-current shrink-0" viewBox="0 0 24 24">
