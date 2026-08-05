@@ -11,6 +11,7 @@ interface Currency {
   flag: string;
   rate_to_usdt: number;
   lauren_rate?: number;
+  lauren_rate_out?: number; // Tasa del día para envíos DESDE Venezuela
   operator?: "divide" | "multiply";
 }
 
@@ -37,7 +38,7 @@ export default function AdminDashboard() {
   // Estado para la confirmación de cambio (Modal)
   const [pendingUpdate, setPendingUpdate] = useState<{
     currency: Currency;
-    type: "lauren" | "base";
+    type: "lauren" | "lauren_out" | "base";
   } | null>(null);
 
   // Estado para la referencia del BCV
@@ -68,7 +69,7 @@ export default function AdminDashboard() {
   const fetchRates = async () => {
     const { data, error } = await supabase
       .from("currencies")
-      .select("id, name, code, flag, rate_to_usdt, lauren_rate, operator")
+      .select("id, name, code, flag, rate_to_usdt, lauren_rate, lauren_rate_out, operator")
       .order("name");
 
     if (error) {
@@ -77,7 +78,8 @@ export default function AdminDashboard() {
       const formatted = data.map((c: any) => ({
         ...c,
         lauren_rate: c.lauren_rate ?? c.rate_to_usdt ?? 1,
-        operator: c.operator || (c.code === "COP" ? "multiply" : "divide"),
+        lauren_rate_out: c.lauren_rate_out ?? c.lauren_rate ?? 1,
+        operator: c.operator || (c.code === "COP" ? "divide" : "multiply"),
       }));
       setCurrencies(formatted);
       setOriginalCurrencies(JSON.parse(JSON.stringify(formatted)));
@@ -100,7 +102,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // FORMATO PARA FECHA Y DÍA EN ESPAÑOL
   const formatBcvDate = (isoDateString: string | null) => {
     const dateObj = isoDateString ? new Date(isoDateString) : new Date();
     if (isNaN(dateObj.getTime())) return "Fecha no disponible";
@@ -112,7 +113,6 @@ export default function AdminDashboard() {
       day: "numeric",
     });
 
-    // Capitalizar la primera letra del día de la semana
     return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
   };
 
@@ -131,45 +131,36 @@ export default function AdminDashboard() {
     return `hace ${days} día${days > 1 ? "s" : ""}`;
   };
 
-  // Manejo de cambios en Tasa del Día (Lauren)
+  // Manejo de cambios en Tasa del Día (HACIA Venezuela)
   const handleLaurenRateChange = (id: string, value: string) => {
     const numVal = parseFloat(value);
-
-    if (isNaN(numVal) || !isFinite(numVal) || numVal < 0) {
-      setCurrencies((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, lauren_rate: 0 } : c))
-      );
-      return;
-    }
-
-    const SAFE_MAX_RATE = 1000000000;
-    const sanitizedValue = Math.min(numVal, SAFE_MAX_RATE);
+    const sanitizedValue = isNaN(numVal) || !isFinite(numVal) || numVal < 0 ? 0 : Math.min(numVal, 1000000000);
 
     setCurrencies((prev) =>
       prev.map((c) => (c.id === id ? { ...c, lauren_rate: sanitizedValue } : c))
     );
   };
 
+  // Manejo de cambios en Tasa del Día (DESDE Venezuela)
+  const handleLaurenRateOutChange = (id: string, value: string) => {
+    const numVal = parseFloat(value);
+    const sanitizedValue = isNaN(numVal) || !isFinite(numVal) || numVal < 0 ? 0 : Math.min(numVal, 1000000000);
+
+    setCurrencies((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, lauren_rate_out: sanitizedValue } : c))
+    );
+  };
+
   // Manejo de cambios en Tasa Base (USDT)
   const handleBaseRateChange = (id: string, value: string) => {
     const numVal = parseFloat(value);
-
-    if (isNaN(numVal) || !isFinite(numVal) || numVal < 0) {
-      setCurrencies((prev) =>
-        prev.map((c) => (c.id === id ? { ...c, rate_to_usdt: 0 } : c))
-      );
-      return;
-    }
-
-    const SAFE_MAX_RATE = 1000000000;
-    const sanitizedValue = Math.min(numVal, SAFE_MAX_RATE);
+    const sanitizedValue = isNaN(numVal) || !isFinite(numVal) || numVal < 0 ? 0 : Math.min(numVal, 1000000000);
 
     setCurrencies((prev) =>
       prev.map((c) => (c.id === id ? { ...c, rate_to_usdt: sanitizedValue } : c))
     );
   };
 
-  // Reversión al perder foco
   const handleRateBlur = (currencyId: string) => {
     setTimeout(() => {
       setPendingUpdate((currentPending) => {
@@ -197,8 +188,10 @@ export default function AdminDashboard() {
   };
 
   // Confirmaciones
-  const triggerSaveConfirmation = (currency: Currency, type: "lauren" | "base") => {
-    const targetValue = type === "lauren" ? currency.lauren_rate : currency.rate_to_usdt;
+  const triggerSaveConfirmation = (currency: Currency, type: "lauren" | "lauren_out" | "base") => {
+    let targetValue = currency.rate_to_usdt;
+    if (type === "lauren") targetValue = currency.lauren_rate || 0;
+    if (type === "lauren_out") targetValue = currency.lauren_rate_out || 0;
     
     if (!targetValue || targetValue <= 0) {
       showToast("⚠️ La tasa debe ser mayor a 0");
@@ -207,7 +200,9 @@ export default function AdminDashboard() {
     }
 
     const original = originalCurrencies.find((c) => c.id === currency.id);
-    const origValue = type === "lauren" ? original?.lauren_rate : original?.rate_to_usdt;
+    let origValue = original?.rate_to_usdt;
+    if (type === "lauren") origValue = original?.lauren_rate;
+    if (type === "lauren_out") origValue = original?.lauren_rate_out;
 
     if (origValue === targetValue) {
       showToast("ℹ️ Ninguna tasa ha sufrido cambios");
@@ -230,6 +225,8 @@ export default function AdminDashboard() {
 
     if (type === "lauren") {
       updatePayload.lauren_rate = currency.lauren_rate;
+    } else if (type === "lauren_out") {
+      updatePayload.lauren_rate_out = currency.lauren_rate_out;
     } else {
       updatePayload.rate_to_usdt = currency.rate_to_usdt;
     }
@@ -243,7 +240,8 @@ export default function AdminDashboard() {
       showToast("❌ Error al actualizar la tasa");
       cancelUpdate(currency.id);
     } else {
-      showToast(`✨ ${type === "lauren" ? "Tasa del Día" : "Tasa Base"} de ${currency.name} guardada`);
+      const typeLabel = type === "lauren" ? "Hacia Venezuela" : type === "lauren_out" ? "Desde Venezuela" : "Base";
+      showToast(`✨ Tasa (${typeLabel}) de ${currency.name} guardada`);
       setOriginalCurrencies((prev) =>
         prev.map((c) => (c.id === currency.id ? { ...currency } : c))
       );
@@ -286,34 +284,17 @@ export default function AdminDashboard() {
     );
   }
 
-  // Filtrar monedas: Venezuela no necesita "Tasa del Día"
+  // Filtrar monedas: Venezuela no aparece como destino de sí misma
   const laurenCurrencies = currencies.filter((c) => c.code !== "VES");
 
   return (
     <main className="min-h-screen bg-[#121212] text-[#f4f1ea] flex flex-col items-center p-4 py-8 relative antialiased selection:bg-[#b58e45] selection:text-[#121212]">
       <style jsx global>{`
-        html {
-          font-size: 16px;
-        }
-        @media (min-width: 768px) {
-          html {
-            font-size: 18px;
-          }
-        }
-        @media (min-width: 1024px) {
-          html {
-            font-size: 20px;
-          }
-        }
-        @media (min-width: 1440px) {
-          html {
-            font-size: 22px;
-          }
-        }
-        body {
-          font-size: 1rem;
-          line-height: 1.5;
-        }
+        html { font-size: 16px; }
+        @media (min-width: 768px) { html { font-size: 18px; } }
+        @media (min-width: 1024px) { html { font-size: 20px; } }
+        @media (min-width: 1440px) { html { font-size: 22px; } }
+        body { font-size: 1rem; line-height: 1.5; }
       `}</style>
 
       {/* TOAST */}
@@ -339,7 +320,7 @@ export default function AdminDashboard() {
 
             <div>
               <h3 className="text-[1rem] font-bold text-[#f4f1ea]">
-                ¿Guardar {pendingUpdate.type === "lauren" ? "Tasa del Día" : "Tasa Base"}?
+                ¿Guardar Tasa del Día?
               </h3>
               <p className="text-[0.75rem] text-[#f4f1ea]/60 mt-1">
                 Moneda: <span className="font-bold text-[#b58e45]">{pendingUpdate.currency.name}</span>
@@ -348,7 +329,11 @@ export default function AdminDashboard() {
               <div className="mt-3 bg-[#121212]/60 p-2.5 rounded-xl border border-[#b58e45]/20 text-center text-[0.75rem]">
                 <p className="text-[#f4f1ea]/60">Nuevo Valor:</p>
                 <p className="text-[1.25rem] font-extrabold text-[#cdead2]">
-                  {pendingUpdate.type === "lauren" ? pendingUpdate.currency.lauren_rate : pendingUpdate.currency.rate_to_usdt}
+                  {pendingUpdate.type === "lauren"
+                    ? pendingUpdate.currency.lauren_rate
+                    : pendingUpdate.type === "lauren_out"
+                    ? pendingUpdate.currency.lauren_rate_out
+                    : pendingUpdate.currency.rate_to_usdt}
                 </p>
               </div>
             </div>
@@ -376,7 +361,7 @@ export default function AdminDashboard() {
         {/* ENCABEZADO ADMIN */}
         <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-5 shadow-xl flex justify-between items-center">
           <div>
-            <h1 className="text-[1rem] font-bold text-[#f4f1ea]">Gestión de Tasas</h1>
+            <h1 className="text-[1rem] font-bold text-[#f4f1ea]">Gestión de Tasas AON Pay</h1>
             <p className="text-[0.75rem] text-[#f4f1ea]/60 truncate max-w-[200px]">{adminEmail}</p>
           </div>
           <button
@@ -387,7 +372,7 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* 🏛️ REFERENCIA BCV MEJORADA */}
+        {/* 🏛️ REFERENCIA BCV */}
         <div className="bg-[#2c2e30] border border-[#b58e45]/30 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3.5">
           <div className="flex justify-between items-center border-b border-[#121212]/40 pb-3">
             <div className="flex items-center gap-2">
@@ -397,7 +382,6 @@ export default function AdminDashboard() {
               </h2>
             </div>
             
-            {/* BOTÓN VISUALMENTE DESTACADO E INTUITIVO */}
             <button 
               onClick={fetchBcvReference}
               disabled={bcvLoading}
@@ -429,7 +413,6 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* FECHA Y DÍA AUTOMÁTICOS + TIEMPO RELATIVO */}
               <div className="text-center pt-1 border-t border-[#121212]/30 space-y-0.5">
                 <p className="text-[0.7rem] font-bold text-[#b58e45]">
                   📅 {formatBcvDate(bcvData.updatedAt)}
@@ -442,19 +425,19 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* 🟢 SECCIÓN 1: TASAS DEL DÍA (LAUREN - OPERACIONES CON VENEZUELA) */}
+        {/* 🟢 SECCIÓN 1: TASAS DEL DÍA (HACIA VENEZUELA) */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 px-1">
             <div className="w-2.5 h-2.5 rounded-full bg-[#b58e45]"></div>
             <h2 className="text-[0.75rem] font-black tracking-wider text-[#b58e45] uppercase">
-              1. Tasas del Día (Operaciones Venezuela)
+              1. Tasas del Día (Envíos HACIA Venezuela)
             </h2>
           </div>
 
           <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-4 shadow-xl divide-y divide-[#121212]/60">
             {laurenCurrencies.map((currency) => (
               <div
-                key={`lauren-${currency.id}`}
+                key={`lauren-in-${currency.id}`}
                 className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -496,12 +479,66 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 🔵 SECCIÓN 2: TASAS BASE (INTERNACIONALES USDT) */}
+        {/* 🟡 SECCIÓN 2: TASAS DEL DÍA (DESDE VENEZUELA HACIA OTROS PAÍSES) */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-2 px-1">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#cdead2]"></div>
+            <h2 className="text-[0.75rem] font-black tracking-wider text-[#cdead2] uppercase">
+              2. Tasas del Día (Envíos DESDE Venezuela)
+            </h2>
+          </div>
+
+          <div className="bg-[#2c2e30] border border-[#cdead2]/20 rounded-2xl p-4 shadow-xl divide-y divide-[#121212]/60">
+            {laurenCurrencies.map((currency) => (
+              <div
+                key={`lauren-out-${currency.id}`}
+                className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[1.25rem]">{currency.flag}</span>
+                  <div className="truncate">
+                    <h3 className="text-[0.75rem] font-bold text-[#f4f1ea] truncate">{currency.name}</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[0.625rem] text-[#f4f1ea]/60 font-bold">{currency.code}</span>
+                      <span className="text-[0.5625rem] font-extrabold px-1.5 py-0.2 rounded bg-[#cdead2]/10 text-[#cdead2] border border-[#cdead2]/20">
+                        {currency.code === "COP" ? "/ Bs" : "x Bs"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative border border-[#cdead2]/30 rounded-xl bg-[#121212]/60 focus-within:border-[#cdead2]">
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={currency.lauren_rate_out === 0 ? "" : currency.lauren_rate_out}
+                      onChange={(e) => handleLaurenRateOutChange(currency.id, e.target.value)}
+                      onBlur={() => handleRateBlur(currency.id)}
+                      className="w-24 bg-transparent text-[#cdead2] font-bold text-right p-2 rounded-xl outline-none text-[0.75rem] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => triggerSaveConfirmation(currency, "lauren_out")}
+                    disabled={savingId === currency.id}
+                    className="bg-[#cdead2] hover:bg-[#a1c4a7] active:scale-95 text-[#121212] font-extrabold text-[0.75rem] py-2 px-3 rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {savingId === currency.id ? "..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 🔵 SECCIÓN 3: TASAS BASE (INTERNACIONALES USDT) */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-2 px-1">
             <div className="w-2.5 h-2.5 rounded-full bg-[#f4f1ea]/40"></div>
             <h2 className="text-[0.75rem] font-black tracking-wider text-[#f4f1ea]/80 uppercase">
-              2. Tasas Base (Operaciones entre Otros Países)
+              3. Tasas Base (Operaciones entre Otros Países)
             </h2>
           </div>
 
