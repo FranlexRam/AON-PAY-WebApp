@@ -174,7 +174,7 @@ export default function Home() {
     // 1. OTROS PAÍSES --> VENEZUELA (Envíos HACIA Venezuela - Tabla 1)
     if (targetCurrency.code === "VES" && originCurrency.code !== "VES") {
       const rate = originCurrency.lauren_rate || 1;
-      return originCurrency.code === "COP" || originCurrency.code === "CLP" ? 1 / rate : rate;
+      return originCurrency.code === "COP" ? 1 / rate : rate;
     }
 
     // 2. VENEZUELA --> OTROS PAÍSES (Envíos DESDE Venezuela - Tabla 2)
