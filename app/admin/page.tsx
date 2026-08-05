@@ -100,6 +100,22 @@ export default function AdminDashboard() {
     }
   };
 
+  // FORMATO PARA FECHA Y DÍA EN ESPAÑOL
+  const formatBcvDate = (isoDateString: string | null) => {
+    const dateObj = isoDateString ? new Date(isoDateString) : new Date();
+    if (isNaN(dateObj.getTime())) return "Fecha no disponible";
+
+    const formattedDate = dateObj.toLocaleDateString("es-ES", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    // Capitalizar la primera letra del día de la semana
+    return formattedDate.charAt(0).toUpperCase() + formattedDate.slice(1);
+  };
+
   const getRelativeTimeString = (isoDateString: string | null) => {
     if (!isoDateString) return "Desconocido";
     const updatedDate = new Date(isoDateString);
@@ -261,10 +277,10 @@ export default function AdminDashboard() {
 
   if (loading || !authenticated) {
     return (
-      <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
+      <main className="min-h-screen bg-[#121212] text-[#f4f1ea] flex items-center justify-center p-4 antialiased">
         <div className="text-center space-y-3 animate-pulse">
-          <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-xs text-slate-400 font-medium">Cargando panel de administración...</p>
+          <div className="w-8 h-8 border-2 border-[#b58e45] border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="text-xs text-[#f4f1ea]/60 font-medium">Cargando panel de administración...</p>
         </div>
       </main>
     );
@@ -274,11 +290,35 @@ export default function AdminDashboard() {
   const laurenCurrencies = currencies.filter((c) => c.code !== "VES");
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white flex flex-col items-center p-4 py-8 relative">
+    <main className="min-h-screen bg-[#121212] text-[#f4f1ea] flex flex-col items-center p-4 py-8 relative antialiased selection:bg-[#b58e45] selection:text-[#121212]">
+      <style jsx global>{`
+        html {
+          font-size: 16px;
+        }
+        @media (min-width: 768px) {
+          html {
+            font-size: 18px;
+          }
+        }
+        @media (min-width: 1024px) {
+          html {
+            font-size: 20px;
+          }
+        }
+        @media (min-width: 1440px) {
+          html {
+            font-size: 22px;
+          }
+        }
+        body {
+          font-size: 1rem;
+          line-height: 1.5;
+        }
+      `}</style>
 
       {/* TOAST */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md text-xs font-bold flex items-center gap-2 transition-all animate-bounce">
+        <div className="fixed top-5 right-5 z-50 bg-[#2c2e30] border border-[#b58e45]/50 text-[#f4f1ea] px-4 py-3 rounded-xl shadow-2xl backdrop-blur-md text-[0.75rem] font-bold flex items-center gap-2 transition-all animate-bounce">
           <span>{toastMessage}</span>
         </div>
       )}
@@ -287,27 +327,27 @@ export default function AdminDashboard() {
       {pendingUpdate && (
         <div 
           onClick={() => cancelUpdate()} 
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in"
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl max-w-xs w-full space-y-4 text-center"
+            className="bg-[#2c2e30] border border-[#b58e45]/40 rounded-2xl p-6 shadow-2xl max-w-xs w-full space-y-4 text-center"
           >
-            <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-xl">
+            <div className="w-12 h-12 rounded-full bg-[#b58e45]/10 border border-[#b58e45]/30 text-[#b58e45] flex items-center justify-center mx-auto text-[1.25rem]">
               📝
             </div>
 
             <div>
-              <h3 className="text-sm font-bold text-slate-100">
+              <h3 className="text-[1rem] font-bold text-[#f4f1ea]">
                 ¿Guardar {pendingUpdate.type === "lauren" ? "Tasa del Día" : "Tasa Base"}?
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
-                Moneda: <span className="font-bold text-indigo-400">{pendingUpdate.currency.name}</span>
+              <p className="text-[0.75rem] text-[#f4f1ea]/60 mt-1">
+                Moneda: <span className="font-bold text-[#b58e45]">{pendingUpdate.currency.name}</span>
               </p>
               
-              <div className="mt-3 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800 text-center text-xs">
-                <p className="text-slate-400">Nuevo Valor:</p>
-                <p className="text-lg font-extrabold text-emerald-400">
+              <div className="mt-3 bg-[#121212]/60 p-2.5 rounded-xl border border-[#b58e45]/20 text-center text-[0.75rem]">
+                <p className="text-[#f4f1ea]/60">Nuevo Valor:</p>
+                <p className="text-[1.25rem] font-extrabold text-[#cdead2]">
                   {pendingUpdate.type === "lauren" ? pendingUpdate.currency.lauren_rate : pendingUpdate.currency.rate_to_usdt}
                 </p>
               </div>
@@ -316,13 +356,13 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-2 gap-2 pt-2">
               <button
                 onClick={() => cancelUpdate()}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-2.5 rounded-xl transition-colors cursor-pointer"
+                className="bg-[#121212]/80 hover:bg-[#121212] text-[#f4f1ea]/70 border border-[#b58e45]/20 font-bold text-[0.75rem] py-2.5 rounded-xl transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmSave}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 rounded-xl shadow-lg transition-all cursor-pointer"
+                className="bg-[#b58e45] hover:bg-[#8b6d32] text-[#121212] hover:text-[#f4f1ea] font-extrabold text-[0.75rem] py-2.5 rounded-xl shadow-lg transition-all cursor-pointer"
               >
                 Confirmar
               </button>
@@ -334,61 +374,69 @@ export default function AdminDashboard() {
       <div className="w-full max-w-lg space-y-6">
 
         {/* ENCABEZADO ADMIN */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex justify-between items-center">
+        <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-5 shadow-xl flex justify-between items-center">
           <div>
-            <h1 className="text-lg font-bold text-slate-100">Gestión de Tasas</h1>
-            <p className="text-xs text-slate-400 truncate max-w-[200px]">{adminEmail}</p>
+            <h1 className="text-[1rem] font-bold text-[#f4f1ea]">Gestión de Tasas</h1>
+            <p className="text-[0.75rem] text-[#f4f1ea]/60 truncate max-w-[200px]">{adminEmail}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-xl text-[0.75rem] font-bold transition-colors cursor-pointer"
           >
             Salir
           </button>
         </div>
 
-        {/* 🏛️ REFERENCIA BCV */}
-        <div className="bg-slate-900/90 border border-indigo-500/20 rounded-2xl p-4 shadow-xl space-y-3">
-          <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+        {/* 🏛️ REFERENCIA BCV MEJORADA */}
+        <div className="bg-[#2c2e30] border border-[#b58e45]/30 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3.5">
+          <div className="flex justify-between items-center border-b border-[#121212]/40 pb-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm">🏛️</span>
-              <h2 className="text-xs font-extrabold tracking-wider text-indigo-300 uppercase">
+              <span className="text-[1.1rem]">🏛️</span>
+              <h2 className="text-[0.8rem] font-extrabold tracking-wider text-[#b58e45] uppercase">
                 Referencia Oficial BCV
               </h2>
             </div>
+            
+            {/* BOTÓN VISUALMENTE DESTACADO E INTUITIVO */}
             <button 
               onClick={fetchBcvReference}
-              title="Recargar referencia"
-              className="text-[10px] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              disabled={bcvLoading}
+              className="bg-[#b58e45]/15 hover:bg-[#b58e45] text-[#b58e45] hover:text-[#121212] border border-[#b58e45]/40 font-bold px-3 py-1.5 rounded-xl text-[0.7rem] sm:text-[0.75rem] flex items-center gap-1.5 transition-all shadow-sm active:scale-95 disabled:opacity-50 cursor-pointer"
             >
-              🔄
+              <span className={`inline-block ${bcvLoading ? "animate-spin" : ""}`}>🔄</span>
+              <span>{bcvLoading ? "Cargando..." : "Actualizar"}</span>
             </button>
           </div>
 
           {bcvLoading ? (
-            <div className="text-center py-2 text-xs text-slate-400 animate-pulse">
-              Consultando BCV...
+            <div className="text-center py-4 text-[0.75rem] text-[#f4f1ea]/60 animate-pulse">
+              Consultando tasas del BCV...
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Dólar BCV</p>
-                  <p className="text-base font-extrabold text-slate-100 mt-0.5">
+                <div className="bg-[#121212]/60 border border-[#b58e45]/20 rounded-xl p-3 text-center">
+                  <p className="text-[0.65rem] font-bold text-[#f4f1ea]/60 uppercase tracking-wider">Dólar BCV</p>
+                  <p className="text-[1.1rem] font-extrabold text-[#cdead2] mt-0.5">
                     {bcvData.usd ? `${bcvData.usd.toFixed(2)} VES` : "N/A"}
                   </p>
                 </div>
-                <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-2.5 text-center">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Euro BCV</p>
-                  <p className="text-base font-extrabold text-slate-100 mt-0.5">
+                <div className="bg-[#121212]/60 border border-[#b58e45]/20 rounded-xl p-3 text-center">
+                  <p className="text-[0.65rem] font-bold text-[#f4f1ea]/60 uppercase tracking-wider">Euro BCV</p>
+                  <p className="text-[1.1rem] font-extrabold text-[#cdead2] mt-0.5">
                     {bcvData.eur ? `${bcvData.eur.toFixed(2)} VES` : "N/A"}
                   </p>
                 </div>
               </div>
-              <div className="text-center">
-                <span className="text-[10px] font-medium text-slate-500">
+
+              {/* FECHA Y DÍA AUTOMÁTICOS + TIEMPO RELATIVO */}
+              <div className="text-center pt-1 border-t border-[#121212]/30 space-y-0.5">
+                <p className="text-[0.7rem] font-bold text-[#b58e45]">
+                  📅 {formatBcvDate(bcvData.updatedAt)}
+                </p>
+                <p className="text-[0.625rem] font-medium text-[#f4f1ea]/40">
                   Actualizado {getRelativeTimeString(bcvData.updatedAt)}
-                </span>
+                </p>
               </div>
             </div>
           )}
@@ -397,25 +445,25 @@ export default function AdminDashboard() {
         {/* 🟢 SECCIÓN 1: TASAS DEL DÍA (LAUREN - OPERACIONES CON VENEZUELA) */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 px-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-            <h2 className="text-xs font-black tracking-wider text-emerald-400 uppercase">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#b58e45]"></div>
+            <h2 className="text-[0.75rem] font-black tracking-wider text-[#b58e45] uppercase">
               1. Tasas del Día (Operaciones Venezuela)
             </h2>
           </div>
 
-          <div className="bg-slate-900 border border-emerald-500/20 rounded-2xl p-4 shadow-xl divide-y divide-slate-800/60">
+          <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-4 shadow-xl divide-y divide-[#121212]/60">
             {laurenCurrencies.map((currency) => (
               <div
                 key={`lauren-${currency.id}`}
                 className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-2xl">{currency.flag}</span>
+                  <span className="text-[1.25rem]">{currency.flag}</span>
                   <div className="truncate">
-                    <h3 className="text-xs font-bold text-slate-100 truncate">{currency.name}</h3>
+                    <h3 className="text-[0.75rem] font-bold text-[#f4f1ea] truncate">{currency.name}</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] text-slate-400 font-bold">{currency.code}</span>
-                      <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="text-[0.625rem] text-[#f4f1ea]/60 font-bold">{currency.code}</span>
+                      <span className="text-[0.5625rem] font-extrabold px-1.5 py-0.2 rounded bg-[#b58e45]/10 text-[#b58e45] border border-[#b58e45]/20">
                         {currency.operator === "multiply" ? "x Bs" : "/ Bs"}
                       </span>
                     </div>
@@ -423,7 +471,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="relative border border-emerald-500/30 rounded-xl bg-slate-950/80 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
+                  <div className="relative border border-[#b58e45]/30 rounded-xl bg-[#121212]/60 focus-within:border-[#b58e45]">
                     <input
                       type="number"
                       step="any"
@@ -431,14 +479,14 @@ export default function AdminDashboard() {
                       value={currency.lauren_rate === 0 ? "" : currency.lauren_rate}
                       onChange={(e) => handleLaurenRateChange(currency.id, e.target.value)}
                       onBlur={() => handleRateBlur(currency.id)}
-                      className="w-24 bg-transparent text-emerald-400 font-bold text-right p-2 rounded-xl outline-none text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-24 bg-transparent text-[#f4f1ea] font-bold text-right p-2 rounded-xl outline-none text-[0.75rem] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
 
                   <button
                     onClick={() => triggerSaveConfirmation(currency, "lauren")}
                     disabled={savingId === currency.id}
-                    className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs py-2 px-3 rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
+                    className="bg-[#b58e45] hover:bg-[#8b6d32] active:scale-95 text-[#121212] hover:text-[#f4f1ea] font-extrabold text-[0.75rem] py-2 px-3 rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
                   >
                     {savingId === currency.id ? "..." : "Guardar"}
                   </button>
@@ -451,28 +499,28 @@ export default function AdminDashboard() {
         {/* 🔵 SECCIÓN 2: TASAS BASE (INTERNACIONALES USDT) */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-2 px-1">
-            <div className="w-2.5 h-2.5 rounded-full bg-indigo-500"></div>
-            <h2 className="text-xs font-black tracking-wider text-indigo-400 uppercase">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#f4f1ea]/40"></div>
+            <h2 className="text-[0.75rem] font-black tracking-wider text-[#f4f1ea]/80 uppercase">
               2. Tasas Base (Operaciones entre Otros Países)
             </h2>
           </div>
 
-          <div className="bg-slate-900 border border-indigo-500/20 rounded-2xl p-4 shadow-xl divide-y divide-slate-800/60">
+          <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-4 shadow-xl divide-y divide-[#121212]/60">
             {currencies.map((currency) => (
               <div
                 key={`base-${currency.id}`}
                 className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-2xl">{currency.flag}</span>
+                  <span className="text-[1.25rem]">{currency.flag}</span>
                   <div className="truncate">
-                    <h3 className="text-xs font-bold text-slate-100 truncate">{currency.name}</h3>
-                    <p className="text-[10px] text-slate-400 font-semibold">{currency.code}</p>
+                    <h3 className="text-[0.75rem] font-bold text-[#f4f1ea] truncate">{currency.name}</h3>
+                    <p className="text-[0.625rem] text-[#f4f1ea]/60 font-semibold">{currency.code}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="relative border border-slate-800 rounded-xl bg-slate-950/80 focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500">
+                  <div className="relative border border-[#b58e45]/30 rounded-xl bg-[#121212]/60 focus-within:border-[#b58e45]">
                     <input
                       type="number"
                       step="any"
@@ -480,14 +528,14 @@ export default function AdminDashboard() {
                       value={currency.rate_to_usdt === 0 ? "" : currency.rate_to_usdt}
                       onChange={(e) => handleBaseRateChange(currency.id, e.target.value)}
                       onBlur={() => handleRateBlur(currency.id)}
-                      className="w-24 bg-transparent text-indigo-400 font-bold text-right p-2 rounded-xl outline-none text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      className="w-24 bg-transparent text-[#f4f1ea] font-bold text-right p-2 rounded-xl outline-none text-[0.75rem] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
 
                   <button
                     onClick={() => triggerSaveConfirmation(currency, "base")}
                     disabled={savingId === currency.id}
-                    className="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs py-2 px-3 rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
+                    className="bg-[#b58e45] hover:bg-[#8b6d32] active:scale-95 text-[#121212] hover:text-[#f4f1ea] font-extrabold text-[0.75rem] py-2 px-3 rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
                   >
                     {savingId === currency.id ? "..." : "Guardar"}
                   </button>
