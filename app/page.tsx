@@ -7,7 +7,7 @@ interface Currency {
   id: string;
   name: string;
   code: string;
-  flag: string;
+  flag: string; // Mantenemos por compatibilidad con DB o fallback
   rate_to_usdt: number;
   lauren_rate?: number;
   lauren_rate_out?: number; // Tasa para envíos DESDE Venezuela
@@ -18,6 +18,63 @@ interface Currency {
 interface BcvData {
   usd: number | null;
   eur: number | null;
+}
+
+// MAPEO DE CÓDIGOS ISO DE PAÍS POR ID Y CÓDIGO
+const COUNTRY_ISO_MAP: Record<string, { iso: string; name: string }> = {
+  usa: { iso: "us", name: "Estados Unidos" },
+  ecu: { iso: "ec", name: "Ecuador" },
+  ven: { iso: "ve", name: "Venezuela" },
+  col: { iso: "co", name: "Colombia" },
+  per: { iso: "pe", name: "Perú" },
+  chl: { iso: "cl", name: "Chile" },
+  bra: { iso: "br", name: "Brasil" },
+};
+
+// COMPONENTE BANDERAS SVG VECTORIALES CON FALLBACK Y ACCESIBILIDAD
+function FlagIcon({ id, code, name, className = "w-7 h-5 sm:w-8 sm:h-6" }: { id?: string; code: string; name?: string; className?: string }) {
+  const [hasError, setHasError] = useState(false);
+  
+  const key = (id && COUNTRY_ISO_MAP[id]) ? id : code.toLowerCase();
+  const countryInfo = COUNTRY_ISO_MAP[key] || { iso: key, name: name || countryInfoCodeName(code) };
+  const countryName = name || countryInfo.name;
+
+  if (hasError) {
+    return (
+      <span
+        role="img"
+        aria-label={`Bandera de ${countryName}`}
+        className={`inline-flex items-center justify-center bg-[#121212] border border-[#b58e45]/40 text-[#b58e45] font-bold text-[10px] rounded px-1 shrink-0 ${className}`}
+      >
+        {id === "ecu" ? "EC" : code.substring(0, 2)}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${countryInfo.iso}.png`}
+      srcSet={`https://flagcdn.com/w80/${countryInfo.iso}.png 2x`}
+      alt={`Bandera de ${countryName}`}
+      role="img"
+      aria-label={`Bandera de ${countryName}`}
+      loading="lazy"
+      onError={() => setHasError(true)}
+      className={`object-cover rounded shadow-sm shrink-0 ${className}`}
+    />
+  );
+}
+
+function countryInfoCodeName(code: string): string {
+  switch (code) {
+    case "USD": return "Estados Unidos";
+    case "VES": return "Venezuela";
+    case "COP": return "Colombia";
+    case "PEN": return "Perú";
+    case "CLP": return "Chile";
+    case "BRL": return "Brasil";
+    default: return code;
+  }
 }
 
 const DEFAULT_CURRENCIES: Currency[] = [
@@ -47,7 +104,7 @@ function getRelativeTimeString(dateString?: string): string {
   return `hace ${hours}h ${minutes}min`;
 }
 
-// FORMATO PARA NUMEROS (MILES CON COMA Y DECIMALES CON PUNTO)
+// FORMATO PARA NUMEROS DE LAS CALCULADORAS (MILES CON COMA Y DECIMALES CON PUNTO)
 function formatNumber(value: number | string): string {
   const cleanStr = typeof value === "string" ? value.replace(/,/g, "") : value.toString();
   const num = parseFloat(cleanStr);
@@ -58,12 +115,21 @@ function formatNumber(value: number | string): string {
   }).format(num);
 }
 
-// FORMATO PARA TASA ACTUAL
+// FORMATO DINÁMICO PARA TASA ACTUAL (RESPETA DECIMALES EXACTOS)
 function formatRate(rate: number): string {
-  if (isNaN(rate)) return "0";
+  if (isNaN(rate) || rate === 0) return "0";
+
+  if (Number.isInteger(rate)) {
+    return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(rate);
+  }
+
+  const strRate = rate.toString();
+  const decimalPart = strRate.split(".")[1] || "";
+  const decimalsCount = Math.min(Math.max(decimalPart.length, 2), 4);
+
   return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: decimalsCount,
+    maximumFractionDigits: decimalsCount,
   }).format(rate);
 }
 
@@ -72,8 +138,9 @@ export default function Home() {
   const [loadingRates, setLoadingRates] = useState<boolean>(true);
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>("");
 
-  const [originCurrency, setOriginCurrency] = useState<Currency>(DEFAULT_CURRENCIES[0]);
-  const [targetCurrency, setTargetCurrency] = useState<Currency>(DEFAULT_CURRENCIES[1]);
+  // ESTADO INICIAL PREDETERMINADO: PERÚ (PEN) --> VENEZUELA (VES)
+  const [originCurrency, setOriginCurrency] = useState<Currency>(DEFAULT_CURRENCIES[3]); // Perú
+  const [targetCurrency, setTargetCurrency] = useState<Currency>(DEFAULT_CURRENCIES[1]); // Venezuela
 
   // CALCULADORA 1: ESTADOS (MONTO A ENVIAR)
   const [c1Envio, setC1Envio] = useState<string>("");
@@ -164,7 +231,11 @@ export default function Home() {
       operator: c.operator || (c.code === "COP" ? "divide" : "multiply"),
     }));
     setCurrencies(formatted);
-    setOriginCurrency((prev) => formatted.find((c) => c.id === prev.id) || formatted[0]);
+    
+    // PRIORIZA PERÚ COM ORIGEN POR DEFECTO
+    setOriginCurrency((prev) => 
+      formatted.find((c) => c.id === prev.id) || formatted.find((c) => c.id === "per") || formatted[0]
+    );
     setTargetCurrency((prev) => formatted.find((c) => c.id === prev.id) || formatted[1]);
     calculateLatestUpdateTime(formatted);
   };
@@ -399,7 +470,7 @@ export default function Home() {
                 className="w-full min-h-[52px] sm:min-h-[60px] flex items-center justify-between bg-[#121212]/60 hover:bg-[#121212]/80 active:bg-[#121212] border border-[#b58e45]/30 px-4 py-3 rounded-xl transition-all focus:ring-2 focus:ring-[#b58e45] outline-none cursor-pointer"
               >
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <span className="text-2xl sm:text-3xl leading-none">{originCurrency.flag}</span>
+                  <FlagIcon id={originCurrency.id} code={originCurrency.code} name={originCurrency.name} />
                   <span className="text-sm sm:text-base font-bold truncate text-[#f4f1ea]">{originCurrency.code}</span>
                 </div>
                 <span className="text-[#b58e45] text-xs ml-1">▼</span>
@@ -425,7 +496,7 @@ export default function Home() {
                 className="w-full min-h-[52px] sm:min-h-[60px] flex items-center justify-between bg-[#121212]/60 hover:bg-[#121212]/80 active:bg-[#121212] border border-[#b58e45]/30 px-4 py-3 rounded-xl transition-all focus:ring-2 focus:ring-[#b58e45] outline-none cursor-pointer"
               >
                 <div className="flex items-center gap-3 overflow-hidden">
-                  <span className="text-2xl sm:text-3xl leading-none">{targetCurrency.flag}</span>
+                  <FlagIcon id={targetCurrency.id} code={targetCurrency.code} name={targetCurrency.name} />
                   <span className="text-sm sm:text-base font-bold truncate text-[#f4f1ea]">{targetCurrency.code}</span>
                 </div>
                 <span className="text-[#b58e45] text-xs ml-1">▼</span>
@@ -689,7 +760,7 @@ export default function Home() {
                   className="w-full min-h-[52px] flex items-center justify-between p-3.5 rounded-xl bg-[#121212]/40 hover:bg-[#121212]/80 border border-[#b58e45]/15 hover:border-[#b58e45]/50 transition-all text-left outline-none group active:scale-[0.98] cursor-pointer"
                 >
                   <div className="flex items-center gap-3.5">
-                    <span className="text-2xl sm:text-3xl leading-none">{curr.flag}</span>
+                    <FlagIcon id={curr.id} code={curr.code} name={curr.name} className="w-8 h-6" />
                     <div>
                       <p className="font-bold text-sm text-[#f4f1ea] group-hover:text-[#b58e45] transition-colors">
                         {curr.name}

@@ -21,6 +21,52 @@ interface BcvData {
   updatedAt: string | null;
 }
 
+// MAPEO DE CÓDIGOS ISO DE PAÍS POR ID Y CÓDIGO
+const COUNTRY_ISO_MAP: Record<string, { iso: string; name: string }> = {
+  usa: { iso: "us", name: "Estados Unidos" },
+  ecu: { iso: "ec", name: "Ecuador" },
+  ven: { iso: "ve", name: "Venezuela" },
+  col: { iso: "co", name: "Colombia" },
+  per: { iso: "pe", name: "Perú" },
+  chl: { iso: "cl", name: "Chile" },
+  bra: { iso: "br", name: "Brasil" },
+};
+
+// COMPONENTE BANDERAS SVG VECTORIALES CON FALLBACK Y ACCESIBILIDAD
+function FlagIcon({ id, code, name, className = "w-6 h-4 sm:w-7 sm:h-5" }: { id?: string; code: string; name?: string; className?: string }) {
+  const [hasError, setHasError] = useState(false);
+  
+  // Buscar primero por ID de divisa (ej: "ecu" vs "usa"), si no por código en minúsculas
+  const key = (id && COUNTRY_ISO_MAP[id]) ? id : code.toLowerCase();
+  const countryInfo = COUNTRY_ISO_MAP[key] || { iso: key, name: name || code };
+  const countryName = name || countryInfo.name;
+
+  if (hasError) {
+    return (
+      <span
+        role="img"
+        aria-label={`Bandera de ${countryName}`}
+        className={`inline-flex items-center justify-center bg-[#121212] border border-[#b58e45]/40 text-[#b58e45] font-bold text-[9px] rounded px-1 shrink-0 ${className}`}
+      >
+        {id === "ecu" ? "EC" : code.substring(0, 2)}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${countryInfo.iso}.png`}
+      srcSet={`https://flagcdn.com/w80/${countryInfo.iso}.png 2x`}
+      alt={`Bandera de ${countryName}`}
+      role="img"
+      aria-label={`Bandera de ${countryName}`}
+      loading="lazy"
+      onError={() => setHasError(true)}
+      className={`object-cover rounded shadow-sm shrink-0 ${className}`}
+    />
+  );
+}
+
 export default function AdminDashboard() {
   const router = useRouter();
   
@@ -441,7 +487,7 @@ export default function AdminDashboard() {
                 className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[1.25rem]">{currency.flag}</span>
+                  <FlagIcon id={currency.id} code={currency.code} name={currency.name} />
                   <div className="truncate">
                     <h3 className="text-[0.75rem] font-bold text-[#f4f1ea] truncate">{currency.name}</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -495,7 +541,7 @@ export default function AdminDashboard() {
                 className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[1.25rem]">{currency.flag}</span>
+                  <FlagIcon id={currency.id} code={currency.code} name={currency.name} />
                   <div className="truncate">
                     <h3 className="text-[0.75rem] font-bold text-[#f4f1ea] truncate">{currency.name}</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
@@ -549,7 +595,7 @@ export default function AdminDashboard() {
                 className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[1.25rem]">{currency.flag}</span>
+                  <FlagIcon id={currency.id} code={currency.code} name={currency.name} />
                   <div className="truncate">
                     <h3 className="text-[0.75rem] font-bold text-[#f4f1ea] truncate">{currency.name}</h3>
                     <p className="text-[0.625rem] text-[#f4f1ea]/60 font-semibold">{currency.code}</p>
