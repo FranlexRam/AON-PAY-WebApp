@@ -36,7 +36,6 @@ const COUNTRY_ISO_MAP: Record<string, { iso: string; name: string }> = {
 function FlagIcon({ id, code, name, className = "w-6 h-4 sm:w-7 sm:h-5" }: { id?: string; code: string; name?: string; className?: string }) {
   const [hasError, setHasError] = useState(false);
   
-  // Buscar primero por ID de divisa (ej: "ecu" vs "usa"), si no por código en minúsculas
   const key = (id && COUNTRY_ISO_MAP[id]) ? id : code.toLowerCase();
   const countryInfo = COUNTRY_ISO_MAP[key] || { iso: key, name: name || code };
   const countryName = name || countryInfo.name;
@@ -205,25 +204,6 @@ export default function AdminDashboard() {
     setCurrencies((prev) =>
       prev.map((c) => (c.id === id ? { ...c, rate_to_usdt: sanitizedValue } : c))
     );
-  };
-
-  const handleRateBlur = (currencyId: string) => {
-    setTimeout(() => {
-      setPendingUpdate((currentPending) => {
-        if (currentPending?.currency.id !== currencyId) {
-          setCurrencies((prev) =>
-            prev.map((c) => {
-              if (c.id === currencyId) {
-                const original = originalCurrencies.find((orig) => orig.id === currencyId);
-                return original ? { ...original } : c;
-              }
-              return c;
-            })
-          );
-        }
-        return currentPending;
-      });
-    }, 150);
   };
 
   const showToast = (msg: string) => {
@@ -507,7 +487,6 @@ export default function AdminDashboard() {
                       min="0"
                       value={currency.lauren_rate === 0 ? "" : currency.lauren_rate}
                       onChange={(e) => handleLaurenRateChange(currency.id, e.target.value)}
-                      onBlur={() => handleRateBlur(currency.id)}
                       className="w-24 bg-transparent text-[#f4f1ea] font-bold text-right p-2 rounded-xl outline-none text-[0.75rem] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
@@ -561,7 +540,6 @@ export default function AdminDashboard() {
                       min="0"
                       value={currency.lauren_rate_out === 0 ? "" : currency.lauren_rate_out}
                       onChange={(e) => handleLaurenRateOutChange(currency.id, e.target.value)}
-                      onBlur={() => handleRateBlur(currency.id)}
                       className="w-24 bg-transparent text-[#cdead2] font-bold text-right p-2 rounded-xl outline-none text-[0.75rem] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
@@ -610,7 +588,6 @@ export default function AdminDashboard() {
                       min="0"
                       value={currency.rate_to_usdt === 0 ? "" : currency.rate_to_usdt}
                       onChange={(e) => handleBaseRateChange(currency.id, e.target.value)}
-                      onBlur={() => handleRateBlur(currency.id)}
                       className="w-24 bg-transparent text-[#f4f1ea] font-bold text-right p-2 rounded-xl outline-none text-[0.75rem] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                     />
                   </div>
