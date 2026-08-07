@@ -232,7 +232,7 @@ export default function Home() {
     }));
     setCurrencies(formatted);
     
-    // PRIORIZA PERÚ COM ORIGEN POR DEFECTO
+    // PRIORIZA PERÚ COMO ORIGEN POR DEFECTO
     setOriginCurrency((prev) => 
       formatted.find((c) => c.id === prev.id) || formatted.find((c) => c.id === "per") || formatted[0]
     );
@@ -257,6 +257,43 @@ export default function Home() {
     // 3. OPERACIONES ENTRE OTROS PAÍSES (USDT BASE)
     return targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
   }, [originCurrency, targetCurrency]);
+
+  // RECALCULAR AUTOMÁTICAMENTE EN TIEMPO REAL SI LAUREN O EL ADMIN CAMBIAN LA TASA
+  useEffect(() => {
+    if (c1Envio) {
+      const cleanVal = c1Envio.replace(/,/g, "");
+      if (!isNaN(Number(cleanVal)) && parseFloat(cleanVal) > 0) {
+        const monto = parseFloat(cleanVal);
+        let recibeCalculado = 0;
+
+        if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
+          const rateOut = targetCurrency.lauren_rate_out || 1;
+          recibeCalculado = targetCurrency.code === "COP" ? monto * rateOut : monto / rateOut;
+        } else {
+          recibeCalculado = monto * currentRate;
+        }
+
+        setC1Recibe(formatNumber(recibeCalculado));
+      }
+    }
+
+    if (c2Recibe) {
+      const cleanVal = c2Recibe.replace(/,/g, "");
+      if (!isNaN(Number(cleanVal)) && parseFloat(cleanVal) > 0) {
+        const monto = parseFloat(cleanVal);
+        let envioCalculado = 0;
+
+        if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
+          const rateOut = targetCurrency.lauren_rate_out || 1;
+          envioCalculado = targetCurrency.code === "COP" ? monto / rateOut : monto * rateOut;
+        } else {
+          envioCalculado = monto / currentRate;
+        }
+
+        setC2Envio(formatNumber(envioCalculado));
+      }
+    }
+  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out]);
 
   const handleSwitchCurrencies = () => {
     const newOrigin = targetCurrency;
