@@ -546,15 +546,20 @@ export default function Home() {
             {loadingRates ? (
               <span className="animate-pulse">Cargando tasas actualizadas...</span>
             ) : (
-              <>Tasa actual: <span className="text-[#b58e45] font-bold text-base sm:text-lg">
-                {originCurrency.code === "VES" ? (
-                  targetCurrency.code === "COP" 
-                    ? `1 VES = ${formatRate(1 / (targetCurrency.lauren_rate_out || 1))} COP`
-                    : `1 ${targetCurrency.code} = ${formatRate(targetCurrency.lauren_rate_out || 1)} VES`
-                ) : (
-                  `1 ${originCurrency.code} = ${formatRate(currentRate)} ${targetCurrency.code}`
-                )}
-              </span></>
+              <>
+                Tasa actual:{" "}
+                <span className="text-[#b58e45] font-bold text-base sm:text-lg">
+                  {originCurrency.code === "VES" ? (
+                    targetCurrency.code === "COP" 
+                      ? `1 VES = ${formatRate(targetCurrency.lauren_rate_out || 1)} COP`
+                      : `1 ${targetCurrency.code} = ${formatRate(targetCurrency.lauren_rate_out || 1)} VES`
+                  ) : originCurrency.code === "COP" && targetCurrency.code === "VES" ? (
+                    `1 VES = ${formatRate(originCurrency.lauren_rate || 1)} COP`
+                  ) : (
+                    `1 ${originCurrency.code} = ${formatRate(currentRate)} ${targetCurrency.code}`
+                  )}
+                </span>
+              </>
             )}
           </div>
         </section>
