@@ -476,18 +476,27 @@ export default function AdminDashboard() {
 
       <div className="w-full max-w-lg space-y-6">
 
-        {/* ENCABEZADO ADMIN */}
-        <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-5 shadow-xl flex justify-between items-center">
+        {/* ENCABEZADO ADMIN CON BOTÓN DE RESUMEN ORGANIZADO DE TASAS */}
+        <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-3">
           <div>
             <h1 className="text-[1rem] font-bold text-[#f4f1ea]">Gestión de Tasas AON Pay</h1>
             <p className="text-[0.75rem] text-[#f4f1ea]/60 truncate max-w-[200px]">{adminEmail}</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-xl text-[0.75rem] font-bold transition-colors cursor-pointer"
-          >
-            Salir
-          </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={() => router.push("/admin/generar-tasas")}
+              className="flex-1 sm:flex-none bg-[#b58e45]/15 hover:bg-[#b58e45] text-[#b58e45] hover:text-[#121212] border border-[#b58e45]/40 px-3 py-1.5 rounded-xl text-[0.75rem] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>📊</span>
+              <span>Resumen Organizado de Tasas</span>
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-1.5 rounded-xl text-[0.75rem] font-bold transition-colors cursor-pointer"
+            >
+              Salir
+            </button>
+          </div>
         </div>
 
         {/* 🏛️ REFERENCIA BCV */}
