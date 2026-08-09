@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 interface Currency {
@@ -136,6 +137,7 @@ function formatRate(rate: number): string {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [currencies, setCurrencies] = useState<Currency[]>(DEFAULT_CURRENCIES);
   const [loadingRates, setLoadingRates] = useState<boolean>(true);
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>("");
@@ -644,13 +646,24 @@ export default function Home() {
 
         {/* SELECCIÓN DE PAÍSES */}
         <section className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-5 sm:p-8 shadow-2xl space-y-5 w-full">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-[#121212]/40 pb-4">
-            <h1 className="text-base sm:text-xl font-bold text-[#f4f1ea] tracking-tight">
-              Tasas de envío en tiempo real
-            </h1>
-            <p className="text-xs sm:text-sm text-[#f4f1ea]/60 font-medium">
-              {loadingRates ? "Cargando actualización..." : `Actualizado ${lastUpdatedTime}`}
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#121212]/40 pb-4">
+            <div>
+              <h1 className="text-base sm:text-xl font-bold text-[#f4f1ea] tracking-tight">
+                Tasas de envío en tiempo real
+              </h1>
+              <p className="text-xs sm:text-sm text-[#f4f1ea]/60 font-medium mt-0.5">
+                {loadingRates ? "Cargando actualización..." : `Actualizado ${lastUpdatedTime}`}
+              </p>
+            </div>
+
+            {/* BOTÓN ENLACE A RESUMEN DE TASAS CLIENTE */}
+            <button
+              onClick={() => router.push("/resumen-tasas")}
+              className="bg-[#b58e45]/15 hover:bg-[#b58e45] text-[#b58e45] hover:text-[#121212] border border-[#b58e45]/40 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+            >
+              <span>📊</span>
+              <span>Resumen Organizado de Tasas</span>
+            </button>
           </div>
 
           <div className="relative grid grid-cols-2 gap-4 sm:gap-8 pt-1">
