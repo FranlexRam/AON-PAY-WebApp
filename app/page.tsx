@@ -15,6 +15,7 @@ interface Currency {
   rate_from_colombia?: number;
   rate_from_chile?: number;
   rate_from_usa?: number;
+  rate_from_ecuador?: number;
   operator?: "divide" | "multiply";
   updated_at?: string;
 }
@@ -80,13 +81,13 @@ function countryInfoCodeName(code: string): string {
 }
 
 const DEFAULT_CURRENCIES: Currency[] = [
-  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.75, rate_from_colombia: 3440, rate_from_chile: 1020, rate_from_usa: 1, operator: "multiply" },
-  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, rate_from_peru: 1, rate_from_colombia: 1, rate_from_chile: 1, rate_from_usa: 1, operator: "divide" },
-  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0, lauren_rate: 4.03, lauren_rate_out: 3.30, rate_from_peru: 850, rate_from_colombia: 1, rate_from_chile: 3.15, rate_from_usa: 2822, operator: "divide" },
-  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72, lauren_rate: 233, lauren_rate_out: 260, rate_from_peru: 1, rate_from_colombia: 1000, rate_from_chile: 290, rate_from_usa: 3.07, operator: "multiply" },
-  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0, lauren_rate: 0.83, lauren_rate_out: 0.92, rate_from_peru: 254, rate_from_colombia: 3.69, rate_from_chile: 1, rate_from_usa: 830, operator: "multiply" },
-  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.74, rate_from_colombia: 3420, rate_from_chile: 1000, rate_from_usa: 10, operator: "multiply" },
-  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98, lauren_rate: 150, lauren_rate_out: 170, rate_from_peru: 1.41, rate_from_colombia: 0.0014, rate_from_chile: 0.0051, rate_from_usa: 4.55, operator: "multiply" },
+  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.75, rate_from_colombia: 3440, rate_from_chile: 1020, rate_from_usa: 1, rate_from_ecuador: 8, operator: "multiply" },
+  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, rate_from_peru: 1, rate_from_colombia: 1, rate_from_chile: 1, rate_from_usa: 1, rate_from_ecuador: 1, operator: "divide" },
+  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0, lauren_rate: 4.03, lauren_rate_out: 3.30, rate_from_peru: 850, rate_from_colombia: 1, rate_from_chile: 3.15, rate_from_usa: 2822, rate_from_ecuador: 2845, operator: "divide" },
+  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72, lauren_rate: 233, lauren_rate_out: 260, rate_from_peru: 1, rate_from_colombia: 1000, rate_from_chile: 290, rate_from_usa: 3.07, rate_from_ecuador: 3.09, operator: "multiply" },
+  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0, lauren_rate: 0.83, lauren_rate_out: 0.92, rate_from_peru: 254, rate_from_colombia: 3.69, rate_from_chile: 1, rate_from_usa: 830, rate_from_ecuador: 835, operator: "multiply" },
+  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.74, rate_from_colombia: 3420, rate_from_chile: 1000, rate_from_usa: 10, rate_from_ecuador: 1, operator: "multiply" },
+  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98, lauren_rate: 150, lauren_rate_out: 170, rate_from_peru: 1.41, rate_from_colombia: 0.0014, rate_from_chile: 0.0051, rate_from_usa: 4.55, rate_from_ecuador: 4.55, operator: "multiply" },
 ];
 
 function getRelativeTimeString(dateString?: string): string {
@@ -227,6 +228,7 @@ export default function Home() {
       rate_from_colombia: c.rate_from_colombia ?? 1,
       rate_from_chile: c.rate_from_chile ?? 1,
       rate_from_usa: c.rate_from_usa ?? 1,
+      rate_from_ecuador: c.rate_from_ecuador ?? 1,
       operator: c.operator || (c.code === "COP" ? "divide" : "multiply"),
     }));
     setCurrencies(formatted);
@@ -253,6 +255,7 @@ export default function Home() {
     if (originCurrency.id === "col") return targetCurrency.rate_from_colombia || 1;
     if (originCurrency.id === "chl") return targetCurrency.rate_from_chile || 1;
     if (originCurrency.id === "usa") return targetCurrency.rate_from_usa || 1;
+    if (originCurrency.id === "ecu") return targetCurrency.rate_from_ecuador || 1;
 
     return targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
   }, [originCurrency, targetCurrency]);
@@ -288,6 +291,14 @@ export default function Home() {
         } else if (originCurrency.id === "usa") {
           if (targetCurrency.id === "ecu") {
             const comisionPct = targetCurrency.rate_from_usa || 0;
+            recibeCalculado = monto * (1 - comisionPct / 100);
+          } else {
+            recibeCalculado = monto * currentRate;
+          }
+        } else if (originCurrency.id === "ecu") {
+          // LÓGICA ECUADOR
+          if (targetCurrency.id === "usa") {
+            const comisionPct = targetCurrency.rate_from_ecuador || 0;
             recibeCalculado = monto * (1 - comisionPct / 100);
           } else {
             recibeCalculado = monto * currentRate;
@@ -335,6 +346,14 @@ export default function Home() {
           } else {
             envioCalculado = monto / currentRate;
           }
+        } else if (originCurrency.id === "ecu") {
+          if (targetCurrency.id === "usa") {
+            const comisionPct = targetCurrency.rate_from_ecuador || 0;
+            const factor = 1 - comisionPct / 100;
+            envioCalculado = factor > 0 ? monto / factor : monto;
+          } else {
+            envioCalculado = monto / currentRate;
+          }
         } else {
           envioCalculado = monto / currentRate;
         }
@@ -342,7 +361,7 @@ export default function Home() {
         setC2Envio(formatNumber(envioCalculado));
       }
     }
-  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, originCurrency.rate_from_peru, originCurrency.rate_from_colombia, originCurrency.rate_from_chile, originCurrency.rate_from_usa, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out, targetCurrency.rate_from_peru, targetCurrency.rate_from_colombia, targetCurrency.rate_from_chile, targetCurrency.rate_from_usa, targetCurrency.rate_to_usdt]);
+  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, originCurrency.rate_from_peru, originCurrency.rate_from_colombia, originCurrency.rate_from_chile, originCurrency.rate_from_usa, originCurrency.rate_from_ecuador, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out, targetCurrency.rate_from_peru, targetCurrency.rate_from_colombia, targetCurrency.rate_from_chile, targetCurrency.rate_from_usa, targetCurrency.rate_from_ecuador, targetCurrency.rate_to_usdt]);
 
   const handleSwitchCurrencies = () => {
     const newOrigin = targetCurrency;
@@ -408,6 +427,13 @@ export default function Home() {
         } else {
           recibeCalculado = monto * currentRate;
         }
+      } else if (originCurrency.id === "ecu") {
+        if (targetCurrency.id === "usa") {
+          const comisionPct = targetCurrency.rate_from_ecuador || 0;
+          recibeCalculado = monto * (1 - comisionPct / 100);
+        } else {
+          recibeCalculado = monto * currentRate;
+        }
       } else {
         recibeCalculado = monto * currentRate;
       }
@@ -457,6 +483,14 @@ export default function Home() {
       } else if (originCurrency.id === "usa") {
         if (targetCurrency.id === "ecu") {
           const comisionPct = targetCurrency.rate_from_usa || 0;
+          const factor = 1 - comisionPct / 100;
+          envioCalculado = factor > 0 ? monto / factor : monto;
+        } else {
+          envioCalculado = monto / currentRate;
+        }
+      } else if (originCurrency.id === "ecu") {
+        if (targetCurrency.id === "usa") {
+          const comisionPct = targetCurrency.rate_from_ecuador || 0;
           const factor = 1 - comisionPct / 100;
           envioCalculado = factor > 0 ? monto / factor : monto;
         } else {
@@ -659,6 +693,8 @@ export default function Home() {
                     `1 ${targetCurrency.code} = ${formatRate(currentRate)} CLP`
                   ) : originCurrency.id === "usa" && targetCurrency.id === "ecu" ? (
                     `Comisión: ${formatRate(targetCurrency.rate_from_usa || 0)}%`
+                  ) : originCurrency.id === "ecu" && targetCurrency.id === "usa" ? (
+                    `Comisión: ${formatRate(targetCurrency.rate_from_ecuador || 0)}%`
                   ) : (
                     `1 ${originCurrency.code} = ${formatRate(currentRate)} ${targetCurrency.code}`
                   )}
@@ -756,6 +792,21 @@ export default function Home() {
                     </div>
                   </div>
                 )}
+
+                {/* TARJETA VISUAL DESTACADA ECUADOR -> USA */}
+                {originCurrency.id === "ecu" && targetCurrency.id === "usa" && c2Recibe && c2Envio && (
+                  <div className="bg-gradient-to-r from-[#b58e45]/20 via-[#121212]/90 to-[#b58e45]/20 border border-[#b58e45]/50 rounded-xl p-3.5 shadow-[0_0_20px_rgba(181,142,69,0.15)] flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm animate-fade-in my-1">
+                    <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[#cdead2]">
+                      <FlagIcon id="usa" code="USD" className="w-5 h-3.5 sm:w-6 sm:h-4" />
+                      <span>Recibe {c2Recibe} USD</span>
+                    </div>
+                    <span className="text-[#b58e45] text-xs font-bold uppercase tracking-wider">con</span>
+                    <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[#f4f1ea]">
+                      <FlagIcon id="ecu" code="USD" className="w-5 h-3.5 sm:w-6 sm:h-4" />
+                      <span>Envía {c2Envio} USD</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -828,6 +879,21 @@ export default function Home() {
                     <span className="text-[#b58e45] font-black text-base sm:text-lg">➔</span>
                     <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[#cdead2]">
                       <FlagIcon id="ecu" code="USD" className="w-5 h-3.5 sm:w-6 sm:h-4" />
+                      <span>{c1Recibe} USD</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* TARJETA VISUAL DESTACADA ECUADOR -> USA */}
+                {originCurrency.id === "ecu" && targetCurrency.id === "usa" && c1Envio && c1Recibe && (
+                  <div className="bg-gradient-to-r from-[#b58e45]/20 via-[#121212]/90 to-[#b58e45]/20 border border-[#b58e45]/50 rounded-xl p-3.5 shadow-[0_0_20px_rgba(181,142,69,0.15)] flex items-center justify-center gap-2 sm:gap-3 text-xs sm:text-sm animate-fade-in my-1">
+                    <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[#f4f1ea]">
+                      <FlagIcon id="ecu" code="USD" className="w-5 h-3.5 sm:w-6 sm:h-4" />
+                      <span>{c1Envio} USD</span>
+                    </div>
+                    <span className="text-[#b58e45] font-black text-base sm:text-lg">➔</span>
+                    <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[#cdead2]">
+                      <FlagIcon id="usa" code="USD" className="w-5 h-3.5 sm:w-6 sm:h-4" />
                       <span>{c1Recibe} USD</span>
                     </div>
                   </div>
