@@ -12,6 +12,7 @@ interface Currency {
   lauren_rate?: number;
   lauren_rate_out?: number;
   rate_from_peru?: number;
+  rate_from_colombia?: number;
   operator?: "divide" | "multiply";
   updated_at?: string;
 }
@@ -77,13 +78,13 @@ function countryInfoCodeName(code: string): string {
 }
 
 const DEFAULT_CURRENCIES: Currency[] = [
-  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.75, operator: "multiply" },
-  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, rate_from_peru: 1, operator: "divide" },
-  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0, lauren_rate: 4.03, lauren_rate_out: 3.30, rate_from_peru: 850, operator: "divide" },
-  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72, lauren_rate: 233, lauren_rate_out: 260, rate_from_peru: 1, operator: "multiply" },
-  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0, lauren_rate: 0.83, lauren_rate_out: 0.92, rate_from_peru: 254, operator: "multiply" },
-  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.74, operator: "multiply" },
-  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98, lauren_rate: 150, lauren_rate_out: 170, rate_from_peru: 1.41, operator: "multiply" },
+  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.75, rate_from_colombia: 3440, operator: "multiply" },
+  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, rate_from_peru: 1, rate_from_colombia: 1, operator: "divide" },
+  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0, lauren_rate: 4.03, lauren_rate_out: 3.30, rate_from_peru: 850, rate_from_colombia: 1, operator: "divide" },
+  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72, lauren_rate: 233, lauren_rate_out: 260, rate_from_peru: 1, rate_from_colombia: 1000, operator: "multiply" },
+  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0, lauren_rate: 0.83, lauren_rate_out: 0.92, rate_from_peru: 254, rate_from_colombia: 3.69, operator: "multiply" },
+  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.74, rate_from_colombia: 3420, operator: "multiply" },
+  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98, lauren_rate: 150, lauren_rate_out: 170, rate_from_peru: 1.41, rate_from_colombia: 0.0014, operator: "multiply" },
 ];
 
 function getRelativeTimeString(dateString?: string): string {
@@ -221,6 +222,7 @@ export default function Home() {
       lauren_rate: c.lauren_rate ?? c.rate_to_usdt ?? 1,
       lauren_rate_out: c.lauren_rate_out ?? c.lauren_rate ?? 1,
       rate_from_peru: c.rate_from_peru ?? 1,
+      rate_from_colombia: c.rate_from_colombia ?? 1,
       operator: c.operator || (c.code === "COP" ? "divide" : "multiply"),
     }));
     setCurrencies(formatted);
@@ -232,7 +234,6 @@ export default function Home() {
     calculateLatestUpdateTime(formatted);
   };
 
-  // CÁLCULO DIRECCIONAL DE LA TASA EFECTIVA
   const currentRate = useMemo(() => {
     // 1. OTROS PAÍSES --> VENEZUELA
     if (targetCurrency.code === "VES" && originCurrency.code !== "VES") {
@@ -246,16 +247,20 @@ export default function Home() {
       return targetCurrency.code === "COP" ? 1 / rateOut : rateOut;
     }
 
-    // 3. DESDE PERÚ (PEN) A OTROS PAÍSES (TASA MANUAL DE LAU)
+    // 3. DESDE PERÚ (PEN) A OTROS PAÍSES
     if (originCurrency.id === "per") {
       return targetCurrency.rate_from_peru || 1;
     }
 
-    // 4. OPERACIONES RESTANTES ENTRE OTROS PAÍSES
+    // 4. DESDE COLOMBIA (COP) A OTROS PAÍSES
+    if (originCurrency.id === "col") {
+      return targetCurrency.rate_from_colombia || 1;
+    }
+
+    // 5. OPERACIONES RESTANTES ENTRE OTROS PAÍSES
     return targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
   }, [originCurrency, targetCurrency]);
 
-  // RECALCULAR AUTOMÁTICAMENTE EN TIEMPO REAL
   useEffect(() => {
     if (c1Envio) {
       const cleanVal = c1Envio.replace(/,/g, "");
@@ -271,6 +276,13 @@ export default function Home() {
             recibeCalculado = monto / currentRate;
           } else {
             recibeCalculado = monto * currentRate;
+          }
+        } else if (originCurrency.id === "col") {
+          // LÓGICA COLOMBIA: BRASIL SE MULTIPLICA, LOS DEMÁS (PEN, CLP, ECU, USA) SE DIVIDEN
+          if (targetCurrency.id === "bra") {
+            recibeCalculado = monto * currentRate;
+          } else {
+            recibeCalculado = monto / currentRate;
           }
         } else {
           recibeCalculado = monto * currentRate;
@@ -295,6 +307,13 @@ export default function Home() {
           } else {
             envioCalculado = monto / currentRate;
           }
+        } else if (originCurrency.id === "col") {
+          // LÓGICA INVERSA COLOMBIA
+          if (targetCurrency.id === "bra") {
+            envioCalculado = monto / currentRate;
+          } else {
+            envioCalculado = monto * currentRate;
+          }
         } else {
           envioCalculado = monto / currentRate;
         }
@@ -302,7 +321,7 @@ export default function Home() {
         setC2Envio(formatNumber(envioCalculado));
       }
     }
-  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, originCurrency.rate_from_peru, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out, targetCurrency.rate_from_peru, targetCurrency.rate_to_usdt]);
+  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, originCurrency.rate_from_peru, originCurrency.rate_from_colombia, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out, targetCurrency.rate_from_peru, targetCurrency.rate_from_colombia, targetCurrency.rate_to_usdt]);
 
   const handleSwitchCurrencies = () => {
     const newOrigin = targetCurrency;
@@ -349,6 +368,12 @@ export default function Home() {
         } else {
           recibeCalculado = monto * currentRate;
         }
+      } else if (originCurrency.id === "col") {
+        if (targetCurrency.id === "bra") {
+          recibeCalculado = monto * currentRate;
+        } else {
+          recibeCalculado = monto / currentRate;
+        }
       } else {
         recibeCalculado = monto * currentRate;
       }
@@ -382,6 +407,12 @@ export default function Home() {
           envioCalculado = monto * currentRate;
         } else {
           envioCalculado = monto / currentRate;
+        }
+      } else if (originCurrency.id === "col") {
+        if (targetCurrency.id === "bra") {
+          envioCalculado = monto / currentRate;
+        } else {
+          envioCalculado = monto * currentRate;
         }
       } else {
         envioCalculado = monto / currentRate;
@@ -574,6 +605,8 @@ export default function Home() {
                     `1 VES = ${formatRate(originCurrency.lauren_rate || 1)} COP`
                   ) : originCurrency.id === "per" && (targetCurrency.id === "ecu" || targetCurrency.id === "usa") ? (
                     `1 ${targetCurrency.code} = ${formatRate(currentRate)} PEN`
+                  ) : originCurrency.id === "col" && targetCurrency.id !== "bra" ? (
+                    `1 ${targetCurrency.code} = ${formatRate(currentRate)} COP`
                   ) : (
                     `1 ${originCurrency.code} = ${formatRate(currentRate)} ${targetCurrency.code}`
                   )}
