@@ -13,6 +13,7 @@ interface Currency {
   lauren_rate_out?: number;
   rate_from_peru?: number;
   rate_from_colombia?: number;
+  rate_from_chile?: number;
   operator?: "divide" | "multiply";
   updated_at?: string;
 }
@@ -78,13 +79,13 @@ function countryInfoCodeName(code: string): string {
 }
 
 const DEFAULT_CURRENCIES: Currency[] = [
-  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.75, rate_from_colombia: 3440, operator: "multiply" },
-  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, rate_from_peru: 1, rate_from_colombia: 1, operator: "divide" },
-  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0, lauren_rate: 4.03, lauren_rate_out: 3.30, rate_from_peru: 850, rate_from_colombia: 1, operator: "divide" },
-  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72, lauren_rate: 233, lauren_rate_out: 260, rate_from_peru: 1, rate_from_colombia: 1000, operator: "multiply" },
-  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0, lauren_rate: 0.83, lauren_rate_out: 0.92, rate_from_peru: 254, rate_from_colombia: 3.69, operator: "multiply" },
-  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.74, rate_from_colombia: 3420, operator: "multiply" },
-  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98, lauren_rate: 150, lauren_rate_out: 170, rate_from_peru: 1.41, rate_from_colombia: 0.0014, operator: "multiply" },
+  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.75, rate_from_colombia: 3440, rate_from_chile: 1020, operator: "multiply" },
+  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, rate_from_peru: 1, rate_from_colombia: 1, rate_from_chile: 1, operator: "divide" },
+  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0, lauren_rate: 4.03, lauren_rate_out: 3.30, rate_from_peru: 850, rate_from_colombia: 1, rate_from_chile: 3.15, operator: "divide" },
+  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72, lauren_rate: 233, lauren_rate_out: 260, rate_from_peru: 1, rate_from_colombia: 1000, rate_from_chile: 290, operator: "multiply" },
+  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0, lauren_rate: 0.83, lauren_rate_out: 0.92, rate_from_peru: 254, rate_from_colombia: 3.69, rate_from_chile: 1, operator: "multiply" },
+  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.74, rate_from_colombia: 3420, rate_from_chile: 1000, operator: "multiply" },
+  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98, lauren_rate: 150, lauren_rate_out: 170, rate_from_peru: 1.41, rate_from_colombia: 0.0014, rate_from_chile: 0.0051, operator: "multiply" },
 ];
 
 function getRelativeTimeString(dateString?: string): string {
@@ -223,6 +224,7 @@ export default function Home() {
       lauren_rate_out: c.lauren_rate_out ?? c.lauren_rate ?? 1,
       rate_from_peru: c.rate_from_peru ?? 1,
       rate_from_colombia: c.rate_from_colombia ?? 1,
+      rate_from_chile: c.rate_from_chile ?? 1,
       operator: c.operator || (c.code === "COP" ? "divide" : "multiply"),
     }));
     setCurrencies(formatted);
@@ -257,7 +259,12 @@ export default function Home() {
       return targetCurrency.rate_from_colombia || 1;
     }
 
-    // 5. OPERACIONES RESTANTES ENTRE OTROS PAÍSES
+    // 5. DESDE CHILE (CLP) A OTROS PAÍSES
+    if (originCurrency.id === "chl") {
+      return targetCurrency.rate_from_chile || 1;
+    }
+
+    // 6. OPERACIONES RESTANTES ENTRE OTROS PAÍSES
     return targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
   }, [originCurrency, targetCurrency]);
 
@@ -278,8 +285,14 @@ export default function Home() {
             recibeCalculado = monto * currentRate;
           }
         } else if (originCurrency.id === "col") {
-          // LÓGICA COLOMBIA: BRASIL SE MULTIPLICA, LOS DEMÁS (PEN, CLP, ECU, USA) SE DIVIDEN
           if (targetCurrency.id === "bra") {
+            recibeCalculado = monto * currentRate;
+          } else {
+            recibeCalculado = monto / currentRate;
+          }
+        } else if (originCurrency.id === "chl") {
+          // LÓGICA CHILE: COLOMBIA Y BRASIL SE MULTIPLICAN; PEN, ECU Y USA SE DIVIDEN
+          if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
             recibeCalculado = monto * currentRate;
           } else {
             recibeCalculado = monto / currentRate;
@@ -308,8 +321,14 @@ export default function Home() {
             envioCalculado = monto / currentRate;
           }
         } else if (originCurrency.id === "col") {
-          // LÓGICA INVERSA COLOMBIA
           if (targetCurrency.id === "bra") {
+            envioCalculado = monto / currentRate;
+          } else {
+            envioCalculado = monto * currentRate;
+          }
+        } else if (originCurrency.id === "chl") {
+          // LÓGICA INVERSA CHILE
+          if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
             envioCalculado = monto / currentRate;
           } else {
             envioCalculado = monto * currentRate;
@@ -321,7 +340,7 @@ export default function Home() {
         setC2Envio(formatNumber(envioCalculado));
       }
     }
-  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, originCurrency.rate_from_peru, originCurrency.rate_from_colombia, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out, targetCurrency.rate_from_peru, targetCurrency.rate_from_colombia, targetCurrency.rate_to_usdt]);
+  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, originCurrency.rate_from_peru, originCurrency.rate_from_colombia, originCurrency.rate_from_chile, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out, targetCurrency.rate_from_peru, targetCurrency.rate_from_colombia, targetCurrency.rate_from_chile, targetCurrency.rate_to_usdt]);
 
   const handleSwitchCurrencies = () => {
     const newOrigin = targetCurrency;
@@ -374,6 +393,12 @@ export default function Home() {
         } else {
           recibeCalculado = monto / currentRate;
         }
+      } else if (originCurrency.id === "chl") {
+        if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
+          recibeCalculado = monto * currentRate;
+        } else {
+          recibeCalculado = monto / currentRate;
+        }
       } else {
         recibeCalculado = monto * currentRate;
       }
@@ -410,6 +435,12 @@ export default function Home() {
         }
       } else if (originCurrency.id === "col") {
         if (targetCurrency.id === "bra") {
+          envioCalculado = monto / currentRate;
+        } else {
+          envioCalculado = monto * currentRate;
+        }
+      } else if (originCurrency.id === "chl") {
+        if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
           envioCalculado = monto / currentRate;
         } else {
           envioCalculado = monto * currentRate;
@@ -607,6 +638,8 @@ export default function Home() {
                     `1 ${targetCurrency.code} = ${formatRate(currentRate)} PEN`
                   ) : originCurrency.id === "col" && targetCurrency.id !== "bra" ? (
                     `1 ${targetCurrency.code} = ${formatRate(currentRate)} COP`
+                  ) : originCurrency.id === "chl" && (targetCurrency.id === "per" || targetCurrency.id === "ecu" || targetCurrency.id === "usa") ? (
+                    `1 ${targetCurrency.code} = ${formatRate(currentRate)} CLP`
                   ) : (
                     `1 ${originCurrency.code} = ${formatRate(currentRate)} ${targetCurrency.code}`
                   )}

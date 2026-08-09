@@ -14,6 +14,7 @@ interface Currency {
   lauren_rate_out?: number;
   rate_from_peru?: number;
   rate_from_colombia?: number;
+  rate_from_chile?: number;
   operator?: "divide" | "multiply";
 }
 
@@ -82,7 +83,7 @@ export default function AdminDashboard() {
 
   const [pendingUpdate, setPendingUpdate] = useState<{
     currency: Currency;
-    type: "lauren" | "lauren_out" | "from_peru" | "from_colombia" | "base";
+    type: "lauren" | "lauren_out" | "from_peru" | "from_colombia" | "from_chile" | "base";
   } | null>(null);
 
   const [bcvData, setBcvData] = useState<BcvData>({ usd: null, eur: null, updatedAt: null });
@@ -111,7 +112,7 @@ export default function AdminDashboard() {
   const fetchRates = async () => {
     const { data, error } = await supabase
       .from("currencies")
-      .select("id, name, code, flag, rate_to_usdt, lauren_rate, lauren_rate_out, rate_from_peru, rate_from_colombia, operator")
+      .select("id, name, code, flag, rate_to_usdt, lauren_rate, lauren_rate_out, rate_from_peru, rate_from_colombia, rate_from_chile, operator")
       .order("name");
 
     if (error) {
@@ -123,6 +124,7 @@ export default function AdminDashboard() {
         lauren_rate_out: c.lauren_rate_out ?? c.lauren_rate ?? 1,
         rate_from_peru: c.rate_from_peru ?? (c.id === "col" ? 850 : c.id === "chl" ? 254 : c.id === "ecu" ? 3.74 : c.id === "bra" ? 1.41 : c.id === "usa" ? 3.75 : 1),
         rate_from_colombia: c.rate_from_colombia ?? (c.id === "per" ? 1000 : c.id === "chl" ? 3.69 : c.id === "bra" ? 0.0014 : c.id === "ecu" ? 3420 : c.id === "usa" ? 3440 : 1),
+        rate_from_chile: c.rate_from_chile ?? (c.id === "per" ? 290 : c.id === "col" ? 3.15 : c.id === "bra" ? 0.0051 : c.id === "ecu" ? 1000 : c.id === "usa" ? 1020 : 1),
         operator: c.operator || (c.code === "COP" ? "divide" : "multiply"),
       }));
       setCurrencies(formatted);
@@ -174,7 +176,6 @@ export default function AdminDashboard() {
     return `hace ${days} día${days > 1 ? "s" : ""}`;
   };
 
-  // SANITIZACIÓN ESTRICTA: SOLO NÚMEROS Y UN ÚNICO PUNTO DECIMAL
   const sanitizeNumericInput = (val: string): string => {
     let clean = val.replace(/[^0-9.]/g, "");
     const parts = clean.split(".");
@@ -204,6 +205,11 @@ export default function AdminDashboard() {
     setCurrencies((prev) => prev.map((c) => (c.id === id ? { ...c, rate_from_colombia: clean as any } : c)));
   };
 
+  const handleRateFromChileChange = (id: string, value: string) => {
+    const clean = sanitizeNumericInput(value);
+    setCurrencies((prev) => prev.map((c) => (c.id === id ? { ...c, rate_from_chile: clean as any } : c)));
+  };
+
   const handleBaseRateChange = (id: string, value: string) => {
     const clean = sanitizeNumericInput(value);
     setCurrencies((prev) => prev.map((c) => (c.id === id ? { ...c, rate_to_usdt: clean as any } : c)));
@@ -224,12 +230,13 @@ export default function AdminDashboard() {
     }, 3000);
   };
 
-  const triggerSaveConfirmation = (currency: Currency, type: "lauren" | "lauren_out" | "from_peru" | "from_colombia" | "base") => {
+  const triggerSaveConfirmation = (currency: Currency, type: "lauren" | "lauren_out" | "from_peru" | "from_colombia" | "from_chile" | "base") => {
     let rawValue = currency.rate_to_usdt;
     if (type === "lauren") rawValue = currency.lauren_rate ?? 0;
     if (type === "lauren_out") rawValue = currency.lauren_rate_out ?? 0;
     if (type === "from_peru") rawValue = currency.rate_from_peru ?? 0;
     if (type === "from_colombia") rawValue = currency.rate_from_colombia ?? 0;
+    if (type === "from_chile") rawValue = currency.rate_from_chile ?? 0;
 
     const targetValue = parseFloat(String(rawValue));
     
@@ -246,6 +253,7 @@ export default function AdminDashboard() {
     if (type === "lauren_out") origValue = original?.lauren_rate_out;
     if (type === "from_peru") origValue = original?.rate_from_peru;
     if (type === "from_colombia") origValue = original?.rate_from_colombia;
+    if (type === "from_chile") origValue = original?.rate_from_chile;
 
     if (origValue === targetValue) {
       showToast("ℹ️ Ninguna tasa ha sufrido cambios");
@@ -268,6 +276,7 @@ export default function AdminDashboard() {
     if (type === "lauren_out") rawValue = currency.lauren_rate_out ?? 0;
     if (type === "from_peru") rawValue = currency.rate_from_peru ?? 0;
     if (type === "from_colombia") rawValue = currency.rate_from_colombia ?? 0;
+    if (type === "from_chile") rawValue = currency.rate_from_chile ?? 0;
 
     const numericValue = parseFloat(String(rawValue));
 
@@ -283,6 +292,8 @@ export default function AdminDashboard() {
       updatePayload.rate_from_peru = numericValue;
     } else if (type === "from_colombia") {
       updatePayload.rate_from_colombia = numericValue;
+    } else if (type === "from_chile") {
+      updatePayload.rate_from_chile = numericValue;
     } else {
       updatePayload.rate_to_usdt = numericValue;
     }
@@ -296,7 +307,7 @@ export default function AdminDashboard() {
       showToast("❌ Error al actualizar la tasa");
       cancelUpdate(currency.id);
     } else {
-      const typeLabel = type === "lauren" ? "Hacia Venezuela" : type === "lauren_out" ? "Desde Venezuela" : type === "from_peru" ? "Desde Perú" : type === "from_colombia" ? "Desde Colombia" : "Base";
+      const typeLabel = type === "lauren" ? "Hacia Venezuela" : type === "lauren_out" ? "Desde Venezuela" : type === "from_peru" ? "Desde Perú" : type === "from_colombia" ? "Desde Colombia" : type === "from_chile" ? "Desde Chile" : "Base";
       showToast(`✨ Tasa (${typeLabel}) de ${currency.name} guardada`);
       
       const updatedCurrency = { ...currency, ...updatePayload };
@@ -350,6 +361,7 @@ export default function AdminDashboard() {
   const laurenCurrencies = currencies.filter((c) => c.code !== "VES");
   const peruCurrencies = currencies.filter((c) => c.id !== "per" && c.code !== "VES");
   const colombiaCurrencies = currencies.filter((c) => c.id !== "col" && c.code !== "VES");
+  const chileCurrencies = currencies.filter((c) => c.id !== "chl" && c.code !== "VES");
 
   return (
     <main className="min-h-screen bg-[#121212] text-[#f4f1ea] flex flex-col items-center p-4 py-8 relative antialiased selection:bg-[#b58e45] selection:text-[#121212]">
@@ -401,6 +413,8 @@ export default function AdminDashboard() {
                     ? pendingUpdate.currency.rate_from_peru
                     : pendingUpdate.type === "from_colombia"
                     ? pendingUpdate.currency.rate_from_colombia
+                    : pendingUpdate.type === "from_chile"
+                    ? pendingUpdate.currency.rate_from_chile
                     : pendingUpdate.currency.rate_to_usdt}
                 </p>
               </div>
@@ -709,12 +723,66 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* 🔵 SECCIÓN 5: TASAS BASE (USDT) */}
+        {/* 🇨🇱 SECCIÓN 5: TASAS DEL DÍA (ENVÍOS DESDE CHILE) */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-2 px-1">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#0039a6]"></div>
+            <h2 className="text-[0.75rem] font-black tracking-wider text-[#0039a6] uppercase flex items-center gap-1.5">
+              <span>🇨🇱</span> 5. Tasas del Día (Envíos DESDE Chile)
+            </h2>
+          </div>
+
+          <div className="bg-[#2c2e30] border border-[#0039a6]/40 rounded-2xl p-4 shadow-xl divide-y divide-[#121212]/60">
+            {chileCurrencies.map((currency) => (
+              <div
+                key={`from-chile-${currency.id}`}
+                className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <FlagIcon id={currency.id} code={currency.code} name={currency.name} />
+                  <div className="truncate">
+                    <h3 className="text-[0.75rem] font-bold text-[#f4f1ea] truncate">{currency.name}</h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[0.625rem] text-[#f4f1ea]/60 font-bold">{currency.code}</span>
+                      <span className="text-[0.5625rem] font-extrabold px-1.5 py-0.2 rounded bg-[#0039a6]/20 text-[#60a5fa] border border-[#0039a6]/30">
+                        {currency.id === "col" || currency.id === "bra" ? "x CLP" : "/ CLP"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="relative border border-[#0039a6]/50 rounded-xl bg-[#121212]/60 focus-within:border-[#60a5fa]">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={currency.rate_from_chile ?? ""}
+                      onChange={(e) => handleRateFromChileChange(currency.id, e.target.value)}
+                      onBlur={() => handleRateBlur(currency.id)}
+                      className="w-24 bg-transparent text-[#f4f1ea] font-bold text-right p-2 rounded-xl outline-none text-[0.75rem]"
+                    />
+                  </div>
+
+                  <button
+                    onMouseDown={() => { isSavingRef.current = true; }}
+                    onClick={() => triggerSaveConfirmation(currency, "from_chile")}
+                    disabled={savingId === `from_chile-${currency.id}`}
+                    className="bg-[#0039a6] hover:bg-[#002880] active:scale-95 text-white font-extrabold text-[0.75rem] py-2 px-3 rounded-xl shadow-md transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {savingId === `from_chile-${currency.id}` ? "..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 🔵 SECCIÓN 6: TASAS BASE (USDT) */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-2 px-1">
             <div className="w-2.5 h-2.5 rounded-full bg-[#f4f1ea]/40"></div>
             <h2 className="text-[0.75rem] font-black tracking-wider text-[#f4f1ea]/80 uppercase">
-              5. Tasas Base (USDT)
+              6. Tasas Base (USDT)
             </h2>
           </div>
 
