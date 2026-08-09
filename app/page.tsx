@@ -7,10 +7,11 @@ interface Currency {
   id: string;
   name: string;
   code: string;
-  flag: string; // Mantenemos por compatibilidad con DB o fallback
+  flag: string;
   rate_to_usdt: number;
   lauren_rate?: number;
-  lauren_rate_out?: number; // Tasa para envíos DESDE Venezuela
+  lauren_rate_out?: number;
+  rate_from_peru?: number;
   operator?: "divide" | "multiply";
   updated_at?: string;
 }
@@ -20,7 +21,6 @@ interface BcvData {
   eur: number | null;
 }
 
-// MAPEO DE CÓDIGOS ISO DE PAÍS POR ID Y CÓDIGO
 const COUNTRY_ISO_MAP: Record<string, { iso: string; name: string }> = {
   usa: { iso: "us", name: "Estados Unidos" },
   ecu: { iso: "ec", name: "Ecuador" },
@@ -31,7 +31,6 @@ const COUNTRY_ISO_MAP: Record<string, { iso: string; name: string }> = {
   bra: { iso: "br", name: "Brasil" },
 };
 
-// COMPONENTE BANDERAS SVG VECTORIALES CON FALLBACK Y ACCESIBILIDAD
 function FlagIcon({ id, code, name, className = "w-7 h-5 sm:w-8 sm:h-6" }: { id?: string; code: string; name?: string; className?: string }) {
   const [hasError, setHasError] = useState(false);
   
@@ -78,13 +77,13 @@ function countryInfoCodeName(code: string): string {
 }
 
 const DEFAULT_CURRENCIES: Currency[] = [
-  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, operator: "multiply" },
-  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, operator: "divide" },
-  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0, lauren_rate: 4.03, lauren_rate_out: 3.30, operator: "divide" },
-  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72, lauren_rate: 233, lauren_rate_out: 260, operator: "multiply" },
-  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0, lauren_rate: 0.83, lauren_rate_out: 0.92, operator: "multiply" },
-  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0, lauren_rate: 760, lauren_rate_out: 850, operator: "multiply" },
-  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98, lauren_rate: 150, lauren_rate_out: 170, operator: "multiply" },
+  { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.75, operator: "multiply" },
+  { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, rate_from_peru: 1, operator: "divide" },
+  { id: "col", name: "Colombia", code: "COP", flag: "🇨🇴", rate_to_usdt: 3950.0, lauren_rate: 4.03, lauren_rate_out: 3.30, rate_from_peru: 850, operator: "divide" },
+  { id: "per", name: "Perú", code: "PEN", flag: "🇵🇪", rate_to_usdt: 3.72, lauren_rate: 233, lauren_rate_out: 260, rate_from_peru: 1, operator: "multiply" },
+  { id: "chl", name: "Chile", code: "CLP", flag: "🇨🇱", rate_to_usdt: 940.0, lauren_rate: 0.83, lauren_rate_out: 0.92, rate_from_peru: 254, operator: "multiply" },
+  { id: "ecu", name: "Ecuador", code: "USD", flag: "🇪🇨", rate_to_usdt: 1.0, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.74, operator: "multiply" },
+  { id: "bra", name: "Brasil", code: "BRL", flag: "🇧🇷", rate_to_usdt: 4.98, lauren_rate: 150, lauren_rate_out: 170, rate_from_peru: 1.41, operator: "multiply" },
 ];
 
 function getRelativeTimeString(dateString?: string): string {
@@ -104,7 +103,6 @@ function getRelativeTimeString(dateString?: string): string {
   return `hace ${hours}h ${minutes}min`;
 }
 
-// FORMATO PARA NUMEROS DE LAS CALCULADORAS (MILES CON COMA Y DECIMALES CON PUNTO)
 function formatNumber(value: number | string): string {
   const cleanStr = typeof value === "string" ? value.replace(/,/g, "") : value.toString();
   const num = parseFloat(cleanStr);
@@ -115,7 +113,6 @@ function formatNumber(value: number | string): string {
   }).format(num);
 }
 
-// FORMATO DINÁMICO PARA TASA ACTUAL (RESPETA DECIMALES EXACTOS)
 function formatRate(rate: number): string {
   if (isNaN(rate) || rate === 0) return "0";
 
@@ -138,23 +135,18 @@ export default function Home() {
   const [loadingRates, setLoadingRates] = useState<boolean>(true);
   const [lastUpdatedTime, setLastUpdatedTime] = useState<string>("");
 
-  // ESTADO INICIAL PREDETERMINADO: PERÚ (PEN) --> VENEZUELA (VES)
   const [originCurrency, setOriginCurrency] = useState<Currency>(DEFAULT_CURRENCIES[3]); // Perú
   const [targetCurrency, setTargetCurrency] = useState<Currency>(DEFAULT_CURRENCIES[1]); // Venezuela
 
-  // CALCULADORA 1: ESTADOS (MONTO A ENVIAR)
   const [c1Envio, setC1Envio] = useState<string>("");
   const [c1Recibe, setC1Recibe] = useState<string>("");
 
-  // CALCULADORA 2: ESTADOS (MONTO A RECIBIR)
   const [c2Recibe, setC2Recibe] = useState<string>("");
   const [c2RecibeUsd, setC2RecibeUsd] = useState<string>("");
   const [c2Envio, setC2Envio] = useState<string>("");
 
-  // Referencia oficial BCV
   const [bcvData, setBcvData] = useState<BcvData>({ usd: null, eur: null });
 
-  // ESTADOS DEL MODAL
   const [modalType, setModalType] = useState<"origin" | "target" | null>(null);
   const [isClosingModal, setIsClosingModal] = useState<boolean>(false);
 
@@ -228,11 +220,11 @@ export default function Home() {
       ...c,
       lauren_rate: c.lauren_rate ?? c.rate_to_usdt ?? 1,
       lauren_rate_out: c.lauren_rate_out ?? c.lauren_rate ?? 1,
+      rate_from_peru: c.rate_from_peru ?? 1,
       operator: c.operator || (c.code === "COP" ? "divide" : "multiply"),
     }));
     setCurrencies(formatted);
     
-    // PRIORIZA PERÚ COMO ORIGEN POR DEFECTO
     setOriginCurrency((prev) => 
       formatted.find((c) => c.id === prev.id) || formatted.find((c) => c.id === "per") || formatted[0]
     );
@@ -242,23 +234,28 @@ export default function Home() {
 
   // CÁLCULO DIRECCIONAL DE LA TASA EFECTIVA
   const currentRate = useMemo(() => {
-    // 1. OTROS PAÍSES --> VENEZUELA (Envíos HACIA Venezuela - Tabla 1)
+    // 1. OTROS PAÍSES --> VENEZUELA
     if (targetCurrency.code === "VES" && originCurrency.code !== "VES") {
       const rate = originCurrency.lauren_rate || 1;
       return originCurrency.code === "COP" ? 1 / rate : rate;
     }
 
-    // 2. VENEZUELA --> OTROS PAÍSES (Envíos DESDE Venezuela - Tabla 2)
+    // 2. VENEZUELA --> OTROS PAÍSES
     if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
       const rateOut = targetCurrency.lauren_rate_out || 1;
       return targetCurrency.code === "COP" ? 1 / rateOut : rateOut;
     }
 
-    // 3. OPERACIONES ENTRE OTROS PAÍSES (USDT BASE)
+    // 3. DESDE PERÚ (PEN) A OTROS PAÍSES (TASA MANUAL DE LAU)
+    if (originCurrency.id === "per") {
+      return targetCurrency.rate_from_peru || 1;
+    }
+
+    // 4. OPERACIONES RESTANTES ENTRE OTROS PAÍSES
     return targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
   }, [originCurrency, targetCurrency]);
 
-  // RECALCULAR AUTOMÁTICAMENTE EN TIEMPO REAL SI LAUREN O EL ADMIN CAMBIAN LA TASA
+  // RECALCULAR AUTOMÁTICAMENTE EN TIEMPO REAL
   useEffect(() => {
     if (c1Envio) {
       const cleanVal = c1Envio.replace(/,/g, "");
@@ -269,6 +266,12 @@ export default function Home() {
         if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
           const rateOut = targetCurrency.lauren_rate_out || 1;
           recibeCalculado = targetCurrency.code === "COP" ? monto * rateOut : monto / rateOut;
+        } else if (originCurrency.id === "per") {
+          if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
+            recibeCalculado = monto / currentRate;
+          } else {
+            recibeCalculado = monto * currentRate;
+          }
         } else {
           recibeCalculado = monto * currentRate;
         }
@@ -286,6 +289,12 @@ export default function Home() {
         if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
           const rateOut = targetCurrency.lauren_rate_out || 1;
           envioCalculado = targetCurrency.code === "COP" ? monto / rateOut : monto * rateOut;
+        } else if (originCurrency.id === "per") {
+          if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
+            envioCalculado = monto * currentRate;
+          } else {
+            envioCalculado = monto / currentRate;
+          }
         } else {
           envioCalculado = monto / currentRate;
         }
@@ -293,7 +302,7 @@ export default function Home() {
         setC2Envio(formatNumber(envioCalculado));
       }
     }
-  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out]);
+  }, [currentRate, originCurrency.lauren_rate, originCurrency.lauren_rate_out, originCurrency.rate_from_peru, targetCurrency.lauren_rate, targetCurrency.lauren_rate_out, targetCurrency.rate_from_peru, targetCurrency.rate_to_usdt]);
 
   const handleSwitchCurrencies = () => {
     const newOrigin = targetCurrency;
@@ -321,7 +330,6 @@ export default function Home() {
     }
   };
 
-  // --- HANDLERS CALCULADORA MONTO A ENVIAR (C1) ---
   const handleC1EnvioChange = (val: string) => {
     const cleanVal = sanitizePositiveNumber(val);
     setC1Envio(cleanVal);
@@ -333,9 +341,14 @@ export default function Home() {
       let recibeCalculado = 0;
 
       if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
-        // Envíos DESDE Venezuela
         const rateOut = targetCurrency.lauren_rate_out || 1;
         recibeCalculado = targetCurrency.code === "COP" ? monto * rateOut : monto / rateOut;
+      } else if (originCurrency.id === "per") {
+        if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
+          recibeCalculado = monto / currentRate;
+        } else {
+          recibeCalculado = monto * currentRate;
+        }
       } else {
         recibeCalculado = monto * currentRate;
       }
@@ -350,7 +363,6 @@ export default function Home() {
     }
   };
 
-  // --- HANDLERS CALCULADORA MONTO A RECIBIR (C2) ---
   const handleC2RecibeChange = (val: string) => {
     const cleanVal = sanitizePositiveNumber(val);
     setC2Recibe(cleanVal);
@@ -363,9 +375,14 @@ export default function Home() {
       let envioCalculado = 0;
 
       if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
-        // Envíos DESDE Venezuela
         const rateOut = targetCurrency.lauren_rate_out || 1;
         envioCalculado = targetCurrency.code === "COP" ? monto / rateOut : monto * rateOut;
+      } else if (originCurrency.id === "per") {
+        if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
+          envioCalculado = monto * currentRate;
+        } else {
+          envioCalculado = monto / currentRate;
+        }
       } else {
         envioCalculado = monto / currentRate;
       }
@@ -555,6 +572,8 @@ export default function Home() {
                       : `1 ${targetCurrency.code} = ${formatRate(targetCurrency.lauren_rate_out || 1)} VES`
                   ) : originCurrency.code === "COP" && targetCurrency.code === "VES" ? (
                     `1 VES = ${formatRate(originCurrency.lauren_rate || 1)} COP`
+                  ) : originCurrency.id === "per" && (targetCurrency.id === "ecu" || targetCurrency.id === "usa") ? (
+                    `1 ${targetCurrency.code} = ${formatRate(currentRate)} PEN`
                   ) : (
                     `1 ${originCurrency.code} = ${formatRate(currentRate)} ${targetCurrency.code}`
                   )}
@@ -620,7 +639,6 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* CASILLA HAY QUE ENVIAR DESTACADA */}
                 <div className="bg-[#b58e45]/10 border border-[#b58e45]/50 rounded-xl p-4 shadow-[0_0_15px_rgba(181,142,69,0.1)] transition-all">
                   <label className="text-xs sm:text-sm font-bold text-[#b58e45] block mb-1">
                     Hay que enviar ({originCurrency.code})
