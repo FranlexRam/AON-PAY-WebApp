@@ -27,6 +27,8 @@ interface BcvData {
   eur: number | null;
 }
 
+type BcvMode = "USD" | "EUR" | "CUSTOM";
+
 const COUNTRY_ISO_MAP: Record<string, { iso: string; name: string }> = {
   usa: { iso: "us", name: "Estados Unidos" },
   ecu: { iso: "ec", name: "Ecuador" },
@@ -154,6 +156,10 @@ export default function Home() {
 
   const [bcvData, setBcvData] = useState<BcvData>({ usd: null, eur: null });
 
+  // MODO REFERENCIA VENEZUELA (USD BCV, EUR BCV, USD CUSTOM)
+  const [bcvMode, setBcvMode] = useState<BcvMode>("USD");
+  const [customRateInput, setCustomRateInput] = useState<string>("");
+
   const [modalType, setModalType] = useState<"origin" | "target" | null>(null);
   const [isClosingModal, setIsClosingModal] = useState<boolean>(false);
 
@@ -244,6 +250,17 @@ export default function Home() {
     calculateLatestUpdateTime(formatted);
   };
 
+  const activeRefRate = useMemo(() => {
+    if (bcvMode === "USD") return bcvData.usd;
+    if (bcvMode === "EUR") return bcvData.eur;
+    if (bcvMode === "CUSTOM") {
+      const cleanCustom = customRateInput.replace(/,/g, "");
+      const num = parseFloat(cleanCustom);
+      return !isNaN(num) && num > 0 ? num : null;
+    }
+    return null;
+  }, [bcvMode, bcvData.usd, bcvData.eur, customRateInput]);
+
   const currentRate = useMemo(() => {
     if (targetCurrency.code === "VES" && originCurrency.code !== "VES") {
       const rate = originCurrency.lauren_rate || 1;
@@ -265,58 +282,110 @@ export default function Home() {
     return targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
   }, [originCurrency, targetCurrency]);
 
+  // HELPER UNIVERSAL DE CÁLCULO DIRECTO: MONTO ENVÍO -> MONTO RECIBE
+  const calculateRecibeFromEnvio = (monto: number): number => {
+    if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
+      const rateOut = targetCurrency.lauren_rate_out || 1;
+      return targetCurrency.code === "COP" ? monto * rateOut : monto / rateOut;
+    } else if (originCurrency.id === "per") {
+      if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
+        return monto / currentRate;
+      } else {
+        return monto * currentRate;
+      }
+    } else if (originCurrency.id === "col") {
+      if (targetCurrency.id === "bra") {
+        return monto * currentRate;
+      } else {
+        return monto / currentRate;
+      }
+    } else if (originCurrency.id === "chl") {
+      if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
+        return monto * currentRate;
+      } else {
+        return monto * currentRate;
+      }
+    } else if (originCurrency.id === "usa") {
+      if (targetCurrency.id === "ecu") {
+        const comisionPct = targetCurrency.rate_from_usa || 0;
+        return monto * (1 - comisionPct / 100);
+      } else {
+        return monto * currentRate;
+      }
+    } else if (originCurrency.id === "ecu") {
+      if (targetCurrency.id === "usa") {
+        const comisionPct = targetCurrency.rate_from_ecuador || 0;
+        return monto * (1 - comisionPct / 100);
+      } else {
+        return monto * currentRate;
+      }
+    } else if (originCurrency.id === "bra") {
+      if (targetCurrency.id === "per" || targetCurrency.id === "col") {
+        return monto * currentRate;
+      } else {
+        return monto / currentRate;
+      }
+    } else {
+      return monto * currentRate;
+    }
+  };
+
+  // HELPER UNIVERSAL DE CÁLCULO INVERSO: MONTO RECIBE -> MONTO ENVÍO
+  const calculateEnvioFromRecibe = (monto: number): number => {
+    if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
+      const rateOut = targetCurrency.lauren_rate_out || 1;
+      return targetCurrency.code === "COP" ? monto / rateOut : monto * rateOut;
+    } else if (originCurrency.id === "per") {
+      if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
+        return monto * currentRate;
+      } else {
+        return monto / currentRate;
+      }
+    } else if (originCurrency.id === "col") {
+      if (targetCurrency.id === "bra") {
+        return monto / currentRate;
+      } else {
+        return monto * currentRate;
+      }
+    } else if (originCurrency.id === "chl") {
+      if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
+        return monto / currentRate;
+      } else {
+        return monto / currentRate;
+      }
+    } else if (originCurrency.id === "usa") {
+      if (targetCurrency.id === "ecu") {
+        const comisionPct = targetCurrency.rate_from_usa || 0;
+        const factor = 1 - comisionPct / 100;
+        return factor > 0 ? monto / factor : monto;
+      } else {
+        return monto / currentRate;
+      }
+    } else if (originCurrency.id === "ecu") {
+      if (targetCurrency.id === "usa") {
+        const comisionPct = targetCurrency.rate_from_ecuador || 0;
+        const factor = 1 - comisionPct / 100;
+        return factor > 0 ? monto / factor : monto;
+      } else {
+        return monto / currentRate;
+      }
+    } else if (originCurrency.id === "bra") {
+      if (targetCurrency.id === "per" || targetCurrency.id === "col") {
+        return monto / currentRate;
+      } else {
+        return monto * currentRate;
+      }
+    } else {
+      return monto / currentRate;
+    }
+  };
+
   useEffect(() => {
     if (c1Envio) {
       const cleanVal = c1Envio.replace(/,/g, "");
       if (!isNaN(Number(cleanVal)) && parseFloat(cleanVal) > 0) {
         const monto = parseFloat(cleanVal);
-        let recibeCalculado = 0;
-
-        if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
-          const rateOut = targetCurrency.lauren_rate_out || 1;
-          recibeCalculado = targetCurrency.code === "COP" ? monto * rateOut : monto / rateOut;
-        } else if (originCurrency.id === "per") {
-          if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
-            recibeCalculado = monto / currentRate;
-          } else {
-            recibeCalculado = monto * currentRate;
-          }
-        } else if (originCurrency.id === "col") {
-          if (targetCurrency.id === "bra") {
-            recibeCalculado = monto * currentRate;
-          } else {
-            recibeCalculado = monto / currentRate;
-          }
-        } else if (originCurrency.id === "chl") {
-          if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
-            recibeCalculado = monto * currentRate;
-          } else {
-            recibeCalculado = monto / currentRate;
-          }
-        } else if (originCurrency.id === "usa") {
-          if (targetCurrency.id === "ecu") {
-            const comisionPct = targetCurrency.rate_from_usa || 0;
-            recibeCalculado = monto * (1 - comisionPct / 100);
-          } else {
-            recibeCalculado = monto * currentRate;
-          }
-        } else if (originCurrency.id === "ecu") {
-          if (targetCurrency.id === "usa") {
-            const comisionPct = targetCurrency.rate_from_ecuador || 0;
-            recibeCalculado = monto * (1 - comisionPct / 100);
-          } else {
-            recibeCalculado = monto * currentRate;
-          }
-        } else if (originCurrency.id === "bra") {
-          if (targetCurrency.id === "per" || targetCurrency.id === "col") {
-            recibeCalculado = monto * currentRate;
-          } else {
-            recibeCalculado = monto / currentRate;
-          }
-        } else {
-          recibeCalculado = monto * currentRate;
-        }
-
+        const recibeCalculado = calculateRecibeFromEnvio(monto);
         setC1Recibe(formatNumber(recibeCalculado));
       }
     }
@@ -325,55 +394,7 @@ export default function Home() {
       const cleanVal = c2Recibe.replace(/,/g, "");
       if (!isNaN(Number(cleanVal)) && parseFloat(cleanVal) > 0) {
         const monto = parseFloat(cleanVal);
-        let envioCalculado = 0;
-
-        if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
-          const rateOut = targetCurrency.lauren_rate_out || 1;
-          envioCalculado = targetCurrency.code === "COP" ? monto / rateOut : monto * rateOut;
-        } else if (originCurrency.id === "per") {
-          if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
-            envioCalculado = monto * currentRate;
-          } else {
-            envioCalculado = monto / currentRate;
-          }
-        } else if (originCurrency.id === "col") {
-          if (targetCurrency.id === "bra") {
-            envioCalculado = monto / currentRate;
-          } else {
-            envioCalculado = monto * currentRate;
-          }
-        } else if (originCurrency.id === "chl") {
-          if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
-            envioCalculado = monto / currentRate;
-          } else {
-            envioCalculado = monto * currentRate;
-          }
-        } else if (originCurrency.id === "usa") {
-          if (targetCurrency.id === "ecu") {
-            const comisionPct = targetCurrency.rate_from_usa || 0;
-            const factor = 1 - comisionPct / 100;
-            envioCalculado = factor > 0 ? monto / factor : monto;
-          } else {
-            envioCalculado = monto / currentRate;
-          }
-        } else if (originCurrency.id === "ecu") {
-          if (targetCurrency.id === "usa") {
-            const comisionPct = targetCurrency.rate_from_ecuador || 0;
-            const factor = 1 - comisionPct / 100;
-            envioCalculado = factor > 0 ? monto / factor : monto;
-          } else {
-            envioCalculado = monto / currentRate;
-          }
-        } else if (originCurrency.id === "bra") {
-          if (targetCurrency.id === "per" || targetCurrency.id === "col") {
-            envioCalculado = monto / currentRate;
-          } else {
-            envioCalculado = monto * currentRate;
-          }
-        } else {
-          envioCalculado = monto / currentRate;
-        }
-
+        const envioCalculado = calculateEnvioFromRecibe(monto);
         setC2Envio(formatNumber(envioCalculado));
       }
     }
@@ -413,53 +434,7 @@ export default function Home() {
       setC1Recibe("");
     } else {
       const monto = parseFloat(cleanVal);
-      let recibeCalculado = 0;
-
-      if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
-        const rateOut = targetCurrency.lauren_rate_out || 1;
-        recibeCalculado = targetCurrency.code === "COP" ? monto * rateOut : monto / rateOut;
-      } else if (originCurrency.id === "per") {
-        if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
-          recibeCalculado = monto / currentRate;
-        } else {
-          recibeCalculado = monto * currentRate;
-        }
-      } else if (originCurrency.id === "col") {
-        if (targetCurrency.id === "bra") {
-          recibeCalculado = monto * currentRate;
-        } else {
-          recibeCalculado = monto / currentRate;
-        }
-      } else if (originCurrency.id === "chl") {
-        if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
-          recibeCalculado = monto * currentRate;
-        } else {
-          recibeCalculado = monto / currentRate;
-        }
-      } else if (originCurrency.id === "usa") {
-        if (targetCurrency.id === "ecu") {
-          const comisionPct = targetCurrency.rate_from_usa || 0;
-          recibeCalculado = monto * (1 - comisionPct / 100);
-        } else {
-          recibeCalculado = monto * currentRate;
-        }
-      } else if (originCurrency.id === "ecu") {
-        if (targetCurrency.id === "usa") {
-          const comisionPct = targetCurrency.rate_from_ecuador || 0;
-          recibeCalculado = monto * (1 - comisionPct / 100);
-        } else {
-          recibeCalculado = monto * currentRate;
-        }
-      } else if (originCurrency.id === "bra") {
-        if (targetCurrency.id === "per" || targetCurrency.id === "col") {
-          recibeCalculado = monto * currentRate;
-        } else {
-          recibeCalculado = monto / currentRate;
-        }
-      } else {
-        recibeCalculado = monto * currentRate;
-      }
-
+      const recibeCalculado = calculateRecibeFromEnvio(monto);
       setC1Recibe(formatNumber(recibeCalculado));
     }
   };
@@ -479,59 +454,11 @@ export default function Home() {
       setC2RecibeUsd("");
     } else {
       const monto = parseFloat(cleanVal);
-      let envioCalculado = 0;
-
-      if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
-        const rateOut = targetCurrency.lauren_rate_out || 1;
-        envioCalculado = targetCurrency.code === "COP" ? monto / rateOut : monto * rateOut;
-      } else if (originCurrency.id === "per") {
-        if (targetCurrency.id === "ecu" || targetCurrency.id === "usa") {
-          envioCalculado = monto * currentRate;
-        } else {
-          envioCalculado = monto / currentRate;
-        }
-      } else if (originCurrency.id === "col") {
-        if (targetCurrency.id === "bra") {
-          envioCalculado = monto / currentRate;
-        } else {
-          envioCalculado = monto * currentRate;
-        }
-      } else if (originCurrency.id === "chl") {
-        if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
-          envioCalculado = monto / currentRate;
-        } else {
-          envioCalculado = monto * currentRate;
-        }
-      } else if (originCurrency.id === "usa") {
-        if (targetCurrency.id === "ecu") {
-          const comisionPct = targetCurrency.rate_from_usa || 0;
-          const factor = 1 - comisionPct / 100;
-          envioCalculado = factor > 0 ? monto / factor : monto;
-        } else {
-          envioCalculado = monto / currentRate;
-        }
-      } else if (originCurrency.id === "ecu") {
-        if (targetCurrency.id === "usa") {
-          const comisionPct = targetCurrency.rate_from_ecuador || 0;
-          const factor = 1 - comisionPct / 100;
-          envioCalculado = factor > 0 ? monto / factor : monto;
-        } else {
-          envioCalculado = monto / currentRate;
-        }
-      } else if (originCurrency.id === "bra") {
-        if (targetCurrency.id === "per" || targetCurrency.id === "col") {
-          envioCalculado = monto / currentRate;
-        } else {
-          envioCalculado = monto * currentRate;
-        }
-      } else {
-        envioCalculado = monto / currentRate;
-      }
-
+      const envioCalculado = calculateEnvioFromRecibe(monto);
       setC2Envio(formatNumber(envioCalculado));
 
-      if (bcvData.usd && bcvData.usd > 0 && targetCurrency.code === "VES") {
-        setC2RecibeUsd(formatNumber(monto / bcvData.usd));
+      if (activeRefRate && activeRefRate > 0 && targetCurrency.code === "VES") {
+        setC2RecibeUsd(formatNumber(monto / activeRefRate));
       }
     }
   };
@@ -546,15 +473,17 @@ export default function Home() {
     const cleanVal = sanitizePositiveNumber(val);
     setC2RecibeUsd(cleanVal);
 
-    if (cleanVal === "" || isNaN(Number(cleanVal)) || !bcvData.usd) {
+    if (cleanVal === "" || isNaN(Number(cleanVal)) || !activeRefRate) {
       setC2Recibe("");
       setC2Envio("");
     } else {
-      const usd = parseFloat(cleanVal);
-      const vesCalculados = usd * bcvData.usd;
+      const valInput = parseFloat(cleanVal);
+      const vesCalculados = valInput * activeRefRate;
 
       setC2Recibe(formatNumber(vesCalculados));
-      setC2Envio(formatNumber(vesCalculados / currentRate));
+      
+      const envioCalculado = calculateEnvioFromRecibe(vesCalculados);
+      setC2Envio(formatNumber(envioCalculado));
     }
   };
 
@@ -564,11 +493,55 @@ export default function Home() {
     }
   };
 
-  const calculateBcvUsdEquivalent = (montoBs: string) => {
+  const handleBcvModeChange = (newMode: BcvMode) => {
+    setBcvMode(newMode);
+
+    if (c2RecibeUsd) {
+      const valInput = parseFloat(c2RecibeUsd.replace(/,/g, ""));
+      if (!isNaN(valInput) && valInput > 0) {
+        let targetRate = null;
+        if (newMode === "USD") targetRate = bcvData.usd;
+        if (newMode === "EUR") targetRate = bcvData.eur;
+        if (newMode === "CUSTOM") {
+          const cleanCustom = customRateInput.replace(/,/g, "");
+          const num = parseFloat(cleanCustom);
+          if (!isNaN(num) && num > 0) targetRate = num;
+        }
+
+        if (targetRate && targetRate > 0) {
+          const vesCalculados = valInput * targetRate;
+          setC2Recibe(formatNumber(vesCalculados));
+
+          const envioCalculado = calculateEnvioFromRecibe(vesCalculados);
+          setC2Envio(formatNumber(envioCalculado));
+        }
+      }
+    }
+  };
+
+  const handleCustomRateInputChange = (val: string) => {
+    const cleanVal = sanitizePositiveNumber(val);
+    setCustomRateInput(cleanVal);
+
+    const numCustom = parseFloat(cleanVal);
+    if (!isNaN(numCustom) && numCustom > 0 && c2RecibeUsd) {
+      const cleanUsd = c2RecibeUsd.replace(/,/g, "");
+      const usdVal = parseFloat(cleanUsd);
+      if (!isNaN(usdVal) && usdVal > 0) {
+        const vesCalculados = usdVal * numCustom;
+        setC2Recibe(formatNumber(vesCalculados));
+        
+        const envioCalculado = calculateEnvioFromRecibe(vesCalculados);
+        setC2Envio(formatNumber(envioCalculado));
+      }
+    }
+  };
+
+  const calculateRefEquivalent = (montoBs: string) => {
     const cleanBs = montoBs.replace(/,/g, "");
-    if (!cleanBs || isNaN(Number(cleanBs)) || !bcvData.usd || bcvData.usd <= 0) return null;
-    const usdEquivalent = parseFloat(cleanBs) / bcvData.usd;
-    return formatNumber(usdEquivalent);
+    if (!cleanBs || isNaN(Number(cleanBs)) || !activeRefRate || activeRefRate <= 0) return null;
+    const refEquivalent = parseFloat(cleanBs) / activeRefRate;
+    return formatNumber(refEquivalent);
   };
 
   const closeModalWithAnimation = (callback?: () => void) => {
@@ -600,12 +573,20 @@ export default function Home() {
     }
 
     let bcvInfo = "";
-    if (targetCurrency.code === "VES" && bcvData.usd) {
-      const bcvUsd = calculateBcvUsdEquivalent(montoRecibo);
-      if (bcvUsd) bcvInfo = `\n*Equivalente Estimado:* $${bcvUsd} USD`;
-    } else if (originCurrency.code === "VES" && bcvData.usd) {
-      const bcvUsd = calculateBcvUsdEquivalent(montoEnvio);
-      if (bcvUsd) bcvInfo = `\n*Equivalente Estimado:* $${bcvUsd} USD`;
+    if (targetCurrency.code === "VES" && activeRefRate) {
+      const refEquiv = calculateRefEquivalent(montoRecibo);
+      if (refEquiv) {
+        const unit = bcvMode === "EUR" ? "EUR" : "USD";
+        const labelRef = bcvMode === "CUSTOM" ? "Tasa Personalizada" : "Oficial BCV";
+        bcvInfo = `\n*Equivalente Estimado:* ${unit === "EUR" ? "€" : "$"}${refEquiv} ${unit} (${labelRef})`;
+      }
+    } else if (originCurrency.code === "VES" && activeRefRate) {
+      const refEquiv = calculateRefEquivalent(montoEnvio);
+      if (refEquiv) {
+        const unit = bcvMode === "EUR" ? "EUR" : "USD";
+        const labelRef = bcvMode === "CUSTOM" ? "Tasa Personalizada" : "Oficial BCV";
+        bcvInfo = `\n*Equivalente Estimado:* ${unit === "EUR" ? "€" : "$"}${refEquiv} ${unit} (${labelRef})`;
+      }
     }
 
     const text = `Hola AON Pay! Quisiera realizar una consulta (${tipoOperacion}):\n\n` +
@@ -757,13 +738,57 @@ export default function Home() {
 
               <div className="space-y-4">
                 {targetCurrency.code === "VES" && (
-                  <div className="bg-[#121212]/50 border border-[#b58e45]/30 focus-within:border-[#b58e45] rounded-xl p-4 transition-all">
-                    <label className="text-xs sm:text-sm font-semibold text-[#b58e45] flex items-center justify-between mb-1">
-                      <span>Para recibir (USD en Venezuela - BCV)</span>
-                      <span className="text-[10px] bg-[#b58e45]/20 px-2 py-0.5 rounded text-[#f4f1ea] font-bold">Oficial</span>
-                    </label>
+                  <div className="bg-[#121212]/50 border border-[#b58e45]/30 focus-within:border-[#b58e45] rounded-xl p-4 transition-all space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <label className="text-xs font-bold text-[#b58e45]">
+                        Para recibir (Referencia en Venezuela)
+                      </label>
+                      
+                      {/* PÍLDORAS SELECTORAS 3 MODOS */}
+                      <div className="flex bg-[#121212] p-1 rounded-lg border border-[#b58e45]/30 text-[10px] font-bold">
+                        <button
+                          type="button"
+                          onClick={() => handleBcvModeChange("USD")}
+                          className={`px-2 py-1 rounded transition-all cursor-pointer ${bcvMode === "USD" ? "bg-[#b58e45] text-[#121212] font-black" : "text-[#f4f1ea]/60 hover:text-[#f4f1ea]"}`}
+                        >
+                          💵 USD BCV
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBcvModeChange("EUR")}
+                          className={`px-2 py-1 rounded transition-all cursor-pointer ${bcvMode === "EUR" ? "bg-[#b58e45] text-[#121212] font-black" : "text-[#f4f1ea]/60 hover:text-[#f4f1ea]"}`}
+                        >
+                          💶 EUR BCV
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleBcvModeChange("CUSTOM")}
+                          className={`px-2 py-1 rounded transition-all cursor-pointer ${bcvMode === "CUSTOM" ? "bg-[#b58e45] text-[#121212] font-black" : "text-[#f4f1ea]/60 hover:text-[#f4f1ea]"}`}
+                        >
+                          ⚙️ USD Personalizado
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* CAMPO TASA PERSONALIZADA */}
+                    {bcvMode === "CUSTOM" && (
+                      <div className="bg-[#121212] border border-[#b58e45]/40 p-2.5 rounded-lg flex items-center justify-between gap-2 text-xs">
+                        <span className="text-[#b58e45] font-bold">Tasa Personalizada (Bs / USD):</span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="Ej: 80.00"
+                          value={customRateInput}
+                          onChange={(e) => handleCustomRateInputChange(e.target.value)}
+                          className="w-28 bg-[#2c2e30] border border-[#b58e45]/30 text-[#f4f1ea] font-extrabold text-right p-1.5 rounded outline-none focus:border-[#b58e45]"
+                        />
+                      </div>
+                    )}
+
                     <div className="relative flex items-center">
-                      <span className="text-xl sm:text-2xl font-bold text-[#b58e45] mr-1.5">$</span>
+                      <span className="text-xl sm:text-2xl font-bold text-[#b58e45] mr-1.5">
+                        {bcvMode === "EUR" ? "€" : "$"}
+                      </span>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -794,9 +819,9 @@ export default function Home() {
                     onFocus={() => setC2Recibe((prev) => prev.replace(/,/g, ""))}
                     className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/30 text-base"
                   />
-                  {targetCurrency.code === "VES" && c2Recibe && calculateBcvUsdEquivalent(c2Recibe) && (
+                  {targetCurrency.code === "VES" && c2Recibe && calculateRefEquivalent(c2Recibe) && (
                     <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
-                      ≈ ${calculateBcvUsdEquivalent(c2Recibe)} USD al cambio oficial BCV
+                      ≈ {bcvMode === "EUR" ? "€" : "$"}{calculateRefEquivalent(c2Recibe)} {bcvMode === "EUR" ? "EUR" : "USD"} {bcvMode === "CUSTOM" ? "al cambio personalizado" : "al cambio oficial BCV"}
                     </p>
                   )}
                 </div>
@@ -812,9 +837,9 @@ export default function Home() {
                     value={c2Envio}
                     className="w-full bg-transparent text-xl sm:text-2xl font-extrabold text-[#f4f1ea] outline-none cursor-not-allowed text-base"
                   />
-                  {originCurrency.code === "VES" && c2Envio && calculateBcvUsdEquivalent(c2Envio) && (
+                  {originCurrency.code === "VES" && c2Envio && calculateRefEquivalent(c2Envio) && (
                     <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
-                      ≈ ${calculateBcvUsdEquivalent(c2Envio)} USD al cambio oficial BCV
+                      ≈ {bcvMode === "EUR" ? "€" : "$"}{calculateRefEquivalent(c2Envio)} {bcvMode === "EUR" ? "EUR" : "USD"} {bcvMode === "CUSTOM" ? "al cambio personalizado" : "al cambio oficial BCV"}
                     </p>
                   )}
                 </div>
@@ -898,14 +923,14 @@ export default function Home() {
                     value={c1Recibe}
                     className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/20 cursor-not-allowed text-base"
                   />
-                  {targetCurrency.code === "VES" && c1Recibe && calculateBcvUsdEquivalent(c1Recibe) && (
+                  {targetCurrency.code === "VES" && c1Recibe && calculateRefEquivalent(c1Recibe) && (
                     <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
-                      ≈ ${calculateBcvUsdEquivalent(c1Recibe)} USD al cambio oficial BCV
+                      ≈ {bcvMode === "EUR" ? "€" : "$"}{calculateRefEquivalent(c1Recibe)} {bcvMode === "EUR" ? "EUR" : "USD"} {bcvMode === "CUSTOM" ? "al cambio personalizado" : "al cambio oficial BCV"}
                     </p>
                   )}
-                  {originCurrency.code === "VES" && c1Envio && calculateBcvUsdEquivalent(c1Envio) && (
+                  {originCurrency.code === "VES" && c1Envio && calculateRefEquivalent(c1Envio) && (
                     <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
-                      ≈ ${calculateBcvUsdEquivalent(c1Envio)} USD al cambio oficial BCV
+                      ≈ {bcvMode === "EUR" ? "€" : "$"}{calculateRefEquivalent(c1Envio)} {bcvMode === "EUR" ? "EUR" : "USD"} {bcvMode === "CUSTOM" ? "al cambio personalizado" : "al cambio oficial BCV"}
                     </p>
                   )}
                 </div>
