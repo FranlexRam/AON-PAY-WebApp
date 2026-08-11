@@ -242,19 +242,26 @@ export default function ResumenTasasCliente() {
                   @vendinero_cambios
                 </div>
 
-                {/* ENCABEZADO CON LOGO Y FECHA */}
-                <div className="text-center space-y-2 pt-2">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-12 h-12 relative flex items-center justify-center">
+                {/* ENCABEZADO CON LOGO Y WEB */}
+                <div className="text-center space-y-1 pt-1">
+                  <div className="flex items-center justify-center gap-3">
+                    {/* LOGO MÁS GRANDE */}
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 relative flex items-center justify-center shrink-0">
                       <img src="/logo.png" alt="AON Pay Logo" className="w-full h-full object-contain" />
                     </div>
-                    <div className="text-left">
-                      <h2 className="text-xl font-black tracking-wider text-[#f4f1ea] leading-none">
+                    <div className="text-left space-y-0.5">
+                      <h2 className="text-2xl sm:text-3xl font-black tracking-wider text-[#f4f1ea] leading-none">
                         AON <span className="text-[#b58e45]">PAY</span>
                       </h2>
-                      <span className="bg-[#2c2e30] text-[#b58e45] text-[11px] font-extrabold px-2 py-0.5 rounded border border-[#b58e45]/40 inline-block mt-1">
-                        04127591543
-                      </span>
+                      <div className="flex flex-col items-start gap-1 pt-0.5">
+                        <span className="bg-[#2c2e30] text-[#b58e45] text-xs font-extrabold px-2.5 py-0.5 rounded border border-[#b58e45]/40 inline-block">
+                          04127591543
+                        </span>
+                        {/* URL DE LA PÁGINA WEB */}
+                        <span className="text-[11px] font-black tracking-wide text-[#f4f1ea]/90">
+                          www.aonpay.com
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -263,13 +270,13 @@ export default function ResumenTasasCliente() {
                     📅 {getFormattedDate()}
                   </p>
 
-                  <h3 className="text-base font-extrabold text-[#b58e45] pt-1">
+                  <h3 className="text-base font-extrabold text-[#b58e45] pt-0.5">
                     Envía desde {origin.title} hacia:
                   </h3>
                 </div>
 
                 {/* TABLA DE TASAS */}
-                <div className="bg-[#232528] border border-[#b58e45]/20 rounded-2xl p-4 my-2 shadow-inner space-y-2.5">
+                <div className="bg-[#232528] border border-[#b58e45]/20 rounded-2xl p-4 my-1 shadow-inner space-y-2">
                   {destinations.map((item, idx) => (
                     <div
                       key={`${origin.id}-${idx}`}
@@ -286,12 +293,12 @@ export default function ResumenTasasCliente() {
                   ))}
                 </div>
 
-                {/* FOOTER PUBLICITARIO */}
-                <div className="text-center space-y-1.5 pb-1">
-                  <span className="bg-[#2c2e30] text-[#b58e45] text-[10px] font-bold px-3 py-1 rounded-full border border-[#b58e45]/30 inline-block">
+                {/* FOOTER PUBLICITARIO CON TEXTO AGRANDADO */}
+                <div className="text-center space-y-2 pb-1">
+                  <span className="bg-[#2c2e30] text-[#b58e45] text-xs font-bold px-3.5 py-1 rounded-full border border-[#b58e45]/30 inline-block">
                     Tenemos Tasa VIP
                   </span>
-                  <p className="text-[10px] font-medium text-[#f4f1ea]/80 leading-tight px-2">
+                  <p className="text-xs sm:text-sm font-bold text-[#f4f1ea] leading-snug px-1">
                     Tasas competitivas en el Mercado, Rapidez, seguridad y efectividad en Nuestras transacciones
                   </p>
                 </div>
