@@ -282,7 +282,6 @@ export default function Home() {
     return targetCurrency.rate_to_usdt / originCurrency.rate_to_usdt;
   }, [originCurrency, targetCurrency]);
 
-  // HELPER UNIVERSAL DE CÁLCULO DIRECTO: MONTO ENVÍO -> MONTO RECIBE
   const calculateRecibeFromEnvio = (monto: number): number => {
     if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
       const rateOut = targetCurrency.lauren_rate_out || 1;
@@ -330,7 +329,6 @@ export default function Home() {
     }
   };
 
-  // HELPER UNIVERSAL DE CÁLCULO INVERSO: MONTO RECIBE -> MONTO ENVÍO
   const calculateEnvioFromRecibe = (monto: number): number => {
     if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
       const rateOut = targetCurrency.lauren_rate_out || 1;
@@ -637,13 +635,13 @@ export default function Home() {
               </p>
             </div>
 
-            {/* BOTÓN ENLACE A RESUMEN DE TASAS CLIENTE */}
+            {/* BOTÓN DESTACADO DORADO '📋 Ver Lista de Tasas del Día' */}
             <button
               onClick={() => router.push("/resumen-tasas")}
-              className="bg-[#b58e45]/15 hover:bg-[#b58e45] text-[#b58e45] hover:text-[#121212] border border-[#b58e45]/40 font-bold px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 cursor-pointer shrink-0"
+              className="w-full sm:w-auto bg-[#b58e45] hover:bg-[#8b6d32] active:scale-95 text-[#121212] font-extrabold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer shrink-0"
             >
-              <span>📊</span>
-              <span>Resumen Organizado de Tasas</span>
+              <span className="text-base">📋</span>
+              <span>Ver Lista de Tasas del Día</span>
             </button>
           </div>
 
