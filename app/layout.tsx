@@ -24,9 +24,12 @@ export const metadata: Metadata = {
   title: "AON Pay | Calculadora de Envíos y Remesas",
   description: "Consulta y calcula las tasas de cambio referenciales en tiempo real con AON Pay.",
   icons: {
-    icon: [{ url: "/favicon.ico", sizes: "any" }],
-    shortcut: "/favicon.ico",
-    apple: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/logo.png", type: "image/png", sizes: "192x192" },
+    ],
+    shortcut: "/logo.png",
+    apple: "/logo.png",
   },
   openGraph: {
     title: "AON Pay | Calculadora de Envíos y Remesas",
