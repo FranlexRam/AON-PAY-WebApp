@@ -24,9 +24,7 @@ export const metadata: Metadata = {
   title: "AON Pay | Calculadora de Envíos y Remesas",
   description: "Consulta y calcula las tasas de cambio referenciales en tiempo real con AON Pay.",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-    ],
+    icon: [{ url: "/favicon.ico", sizes: "any" }],
     shortcut: "/favicon.ico",
     apple: "/favicon.ico",
   },
@@ -37,7 +35,7 @@ export const metadata: Metadata = {
     siteName: "AON Pay",
     images: [
       {
-        url: "/logo.png", // Apunta a public/logo.png
+        url: "/logo.png",
         width: 1200,
         height: 630,
         alt: "AON Pay Logo",
@@ -59,12 +57,33 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Esquema JSON-LD para Google (Entidad WebApplication)
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "AON Pay",
+    url: "https://www.aonpayapp.com",
+    description: "Consulta y calcula las tasas de cambio referenciales en tiempo real con AON Pay.",
+    applicationCategory: "FinanceApplication",
+    operatingSystem: "All",
+    browserRequirements: "Requires JavaScript",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+  };
+
   return (
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-950 text-slate-100 font-sans">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {children}
       </body>
     </html>
