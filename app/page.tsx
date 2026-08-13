@@ -88,7 +88,8 @@ function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    const cleanValue = value.replace(/,/g, "").trim();
+    // Normalizar para copiar limpiamente el número
+    const cleanValue = value.replace(/\./g, "").replace(",", ".").trim();
     if (!cleanValue || isNaN(Number(cleanValue)) || parseFloat(cleanValue) <= 0) return;
 
     navigator.clipboard.writeText(value);
@@ -96,7 +97,7 @@ function CopyButton({ value }: { value: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const isDisabled = !value || value.trim() === "" || value.trim() === "0.00";
+  const isDisabled = !value || value.trim() === "" || value.trim() === "0,00";
 
   return (
     <button
@@ -156,10 +157,10 @@ function getRelativeTimeString(dateString?: string): string {
 }
 
 function formatNumber(value: number | string): string {
-  const cleanStr = typeof value === "string" ? value.replace(/,/g, "") : value.toString();
+  const cleanStr = typeof value === "string" ? value.replace(/\./g, "").replace(",", ".") : value.toString();
   const num = parseFloat(cleanStr);
   if (isNaN(num)) return "";
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(num);
@@ -169,14 +170,14 @@ function formatRate(rate: number): string {
   if (isNaN(rate) || rate === 0) return "0";
 
   if (Number.isInteger(rate)) {
-    return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(rate);
+    return new Intl.NumberFormat("es-VE", { maximumFractionDigits: 0 }).format(rate);
   }
 
   const strRate = rate.toString();
   const decimalPart = strRate.split(".")[1] || "";
   const decimalsCount = Math.min(Math.max(decimalPart.length, 2), 4);
 
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("es-VE", {
     minimumFractionDigits: decimalsCount,
     maximumFractionDigits: decimalsCount,
   }).format(rate);
@@ -298,7 +299,7 @@ export default function Home() {
     if (bcvMode === "USD") return bcvData.usd;
     if (bcvMode === "EUR") return bcvData.eur;
     if (bcvMode === "CUSTOM") {
-      const cleanCustom = customRateInput.replace(/,/g, "");
+      const cleanCustom = customRateInput.replace(/\./g, "").replace(",", ".");
       const num = parseFloat(cleanCustom);
       return !isNaN(num) && num > 0 ? num : null;
     }
@@ -424,7 +425,7 @@ export default function Home() {
 
   useEffect(() => {
     if (c1Envio) {
-      const cleanVal = c1Envio.replace(/,/g, "");
+      const cleanVal = c1Envio.replace(/\./g, "").replace(",", ".");
       if (!isNaN(Number(cleanVal)) && parseFloat(cleanVal) > 0) {
         const monto = parseFloat(cleanVal);
         const recibeCalculado = calculateRecibeFromEnvio(monto);
@@ -433,7 +434,7 @@ export default function Home() {
     }
 
     if (c2Recibe) {
-      const cleanVal = c2Recibe.replace(/,/g, "");
+      const cleanVal = c2Recibe.replace(/\./g, "").replace(",", ".");
       if (!isNaN(Number(cleanVal)) && parseFloat(cleanVal) > 0) {
         const monto = parseFloat(cleanVal);
         const envioCalculado = calculateEnvioFromRecibe(monto);
@@ -454,11 +455,8 @@ export default function Home() {
   };
 
   const sanitizePositiveNumber = (val: string): string => {
-    let clean = val.replace(/[^0-9.]/g, "");
-    const parts = clean.split(".");
-    if (parts.length > 2) {
-      clean = parts[0] + "." + parts.slice(1).join("");
-    }
+    let clean = val.replace(/[^0-9.,]/g, "");
+    // Permitir ingreso de punto o coma como separador decimal durante la escritura
     return clean;
   };
 
@@ -468,14 +466,19 @@ export default function Home() {
     }
   };
 
+  const parseInputToFloat = (val: string): number => {
+    const clean = val.replace(/\./g, "").replace(",", ".");
+    return parseFloat(clean);
+  };
+
   const handleC1EnvioChange = (val: string) => {
     const cleanVal = sanitizePositiveNumber(val);
     setC1Envio(cleanVal);
 
-    if (cleanVal === "" || isNaN(Number(cleanVal))) {
+    const monto = parseInputToFloat(cleanVal);
+    if (isNaN(monto) || monto <= 0) {
       setC1Recibe("");
     } else {
-      const monto = parseFloat(cleanVal);
       const recibeCalculado = calculateRecibeFromEnvio(monto);
       setC1Recibe(formatNumber(recibeCalculado));
     }
@@ -483,7 +486,10 @@ export default function Home() {
 
   const handleC1EnvioBlur = () => {
     if (c1Envio) {
-      setC1Envio(formatNumber(c1Envio));
+      const num = parseInputToFloat(c1Envio);
+      if (!isNaN(num) && num > 0) {
+        setC1Envio(formatNumber(num));
+      }
     }
   };
 
@@ -491,11 +497,11 @@ export default function Home() {
     const cleanVal = sanitizePositiveNumber(val);
     setC2Recibe(cleanVal);
 
-    if (cleanVal === "" || isNaN(Number(cleanVal))) {
+    const monto = parseInputToFloat(cleanVal);
+    if (isNaN(monto) || monto <= 0) {
       setC2Envio("");
       setC2RecibeUsd("");
     } else {
-      const monto = parseFloat(cleanVal);
       const envioCalculado = calculateEnvioFromRecibe(monto);
       setC2Envio(formatNumber(envioCalculado));
 
@@ -507,7 +513,10 @@ export default function Home() {
 
   const handleC2RecibeBlur = () => {
     if (c2Recibe) {
-      setC2Recibe(formatNumber(c2Recibe));
+      const num = parseInputToFloat(c2Recibe);
+      if (!isNaN(num) && num > 0) {
+        setC2Recibe(formatNumber(num));
+      }
     }
   };
 
@@ -515,11 +524,11 @@ export default function Home() {
     const cleanVal = sanitizePositiveNumber(val);
     setC2RecibeUsd(cleanVal);
 
-    if (cleanVal === "" || isNaN(Number(cleanVal)) || !activeRefRate) {
+    const valInput = parseInputToFloat(cleanVal);
+    if (isNaN(valInput) || valInput <= 0 || !activeRefRate) {
       setC2Recibe("");
       setC2Envio("");
     } else {
-      const valInput = parseFloat(cleanVal);
       const vesCalculados = valInput * activeRefRate;
 
       setC2Recibe(formatNumber(vesCalculados));
@@ -531,7 +540,10 @@ export default function Home() {
 
   const handleC2RecibeUsdBlur = () => {
     if (c2RecibeUsd) {
-      setC2RecibeUsd(formatNumber(c2RecibeUsd));
+      const num = parseInputToFloat(c2RecibeUsd);
+      if (!isNaN(num) && num > 0) {
+        setC2RecibeUsd(formatNumber(num));
+      }
     }
   };
 
@@ -539,14 +551,13 @@ export default function Home() {
     setBcvMode(newMode);
 
     if (c2RecibeUsd) {
-      const valInput = parseFloat(c2RecibeUsd.replace(/,/g, ""));
+      const valInput = parseInputToFloat(c2RecibeUsd);
       if (!isNaN(valInput) && valInput > 0) {
         let targetRate = null;
         if (newMode === "USD") targetRate = bcvData.usd;
         if (newMode === "EUR") targetRate = bcvData.eur;
         if (newMode === "CUSTOM") {
-          const cleanCustom = customRateInput.replace(/,/g, "");
-          const num = parseFloat(cleanCustom);
+          const num = parseInputToFloat(customRateInput);
           if (!isNaN(num) && num > 0) targetRate = num;
         }
 
@@ -565,10 +576,9 @@ export default function Home() {
     const cleanVal = sanitizePositiveNumber(val);
     setCustomRateInput(cleanVal);
 
-    const numCustom = parseFloat(cleanVal);
+    const numCustom = parseInputToFloat(cleanVal);
     if (!isNaN(numCustom) && numCustom > 0 && c2RecibeUsd) {
-      const cleanUsd = c2RecibeUsd.replace(/,/g, "");
-      const usdVal = parseFloat(cleanUsd);
+      const usdVal = parseInputToFloat(c2RecibeUsd);
       if (!isNaN(usdVal) && usdVal > 0) {
         const vesCalculados = usdVal * numCustom;
         setC2Recibe(formatNumber(vesCalculados));
@@ -580,7 +590,7 @@ export default function Home() {
   };
 
   const calculateRefEquivalent = (montoBs: string) => {
-    const cleanBs = montoBs.replace(/,/g, "");
+    const cleanBs = montoBs.replace(/\./g, "").replace(",", ".");
     if (!cleanBs || isNaN(Number(cleanBs)) || !activeRefRate || activeRefRate <= 0) return null;
     const refEquivalent = parseFloat(cleanBs) / activeRefRate;
     return formatNumber(refEquivalent);
@@ -608,7 +618,7 @@ export default function Home() {
   };
 
   const handleWhatsAppSend = (montoEnvio: string, montoRecibo: string, tipoOperacion: string) => {
-    const cleanEnvio = montoEnvio.replace(/,/g, "");
+    const cleanEnvio = montoEnvio.replace(/\./g, "").replace(",", ".");
     if (!cleanEnvio || parseFloat(cleanEnvio) <= 0) {
       alert("Por favor ingresa un monto válido antes de consultar.");
       return;
@@ -819,7 +829,7 @@ export default function Home() {
                         <input
                           type="text"
                           inputMode="decimal"
-                          placeholder="Ej: 80.00"
+                          placeholder="Ej: 80,00"
                           value={customRateInput}
                           onChange={(e) => handleCustomRateInputChange(e.target.value)}
                           className="w-28 bg-[#2c2e30] border border-[#b58e45]/30 text-[#f4f1ea] font-extrabold text-right p-1.5 rounded outline-none focus:border-[#b58e45]"
@@ -835,12 +845,12 @@ export default function Home() {
                         <input
                           type="text"
                           inputMode="decimal"
-                          placeholder="0.00"
+                          placeholder="0,00"
                           value={c2RecibeUsd}
                           onKeyDown={handleKeyDown}
                           onChange={(e) => handleC2RecibeUsdChange(e.target.value)}
                           onBlur={handleC2RecibeUsdBlur}
-                          onFocus={() => setC2RecibeUsd((prev) => prev.replace(/,/g, ""))}
+                          onFocus={() => setC2RecibeUsd((prev) => prev.replace(/\./g, ""))}
                           className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
                         />
                       </div>
@@ -857,12 +867,12 @@ export default function Home() {
                     <input
                       type="text"
                       inputMode="decimal"
-                      placeholder="0.00"
+                      placeholder="0,00"
                       value={c2Recibe}
                       onKeyDown={handleKeyDown}
                       onChange={(e) => handleC2RecibeChange(e.target.value)}
                       onBlur={handleC2RecibeBlur}
-                      onFocus={() => setC2Recibe((prev) => prev.replace(/,/g, ""))}
+                      onFocus={() => setC2Recibe((prev) => prev.replace(/\./g, ""))}
                       className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/30 text-base"
                     />
                     <CopyButton value={c2Recibe} />
@@ -882,7 +892,7 @@ export default function Home() {
                     <input
                       type="text"
                       readOnly
-                      placeholder="0.00"
+                      placeholder="0,00"
                       value={c2Envio}
                       className="w-full bg-transparent text-xl sm:text-2xl font-extrabold text-[#f4f1ea] outline-none cursor-not-allowed text-base"
                     />
@@ -954,12 +964,12 @@ export default function Home() {
                     <input
                       type="text"
                       inputMode="decimal"
-                      placeholder="0.00"
+                      placeholder="0,00"
                       value={c1Envio}
                       onKeyDown={handleKeyDown}
                       onChange={(e) => handleC1EnvioChange(e.target.value)}
                       onBlur={handleC1EnvioBlur}
-                      onFocus={() => setC1Envio((prev) => prev.replace(/,/g, ""))}
+                      onFocus={() => setC1Envio((prev) => prev.replace(/\./g, ""))}
                       className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
                     />
                     <CopyButton value={c1Envio} />
@@ -974,7 +984,7 @@ export default function Home() {
                     <input
                       type="text"
                       readOnly
-                      placeholder="0.00"
+                      placeholder="0,00"
                       value={c1Recibe}
                       className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/20 cursor-not-allowed text-base"
                     />
