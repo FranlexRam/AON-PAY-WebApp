@@ -601,18 +601,18 @@ export default function Home() {
       
       <div className="w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl space-y-6 sm:space-y-8">
         
-        {/* LOGO */}
+        {/* LOGO & ENCABEZADO H1 SEO */}
         <header className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 text-center">
           <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center shrink-0">
             <img
               src="/logo.png"
-              alt="AON Pay Logo"
+              alt="AON Pay Logo - Calculadora de Remesas"
               className="w-full h-full object-contain"
             />
           </div>
-          <span className="text-3xl sm:text-4xl font-extrabold tracking-wide text-[#f4f1ea] leading-tight">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-wide text-[#f4f1ea] leading-tight">
             AON <span className="text-[#b58e45]">Pay</span>
-          </span>
+          </h1>
         </header>
 
         {/* DISCLAIMER */}
@@ -627,9 +627,9 @@ export default function Home() {
         <section className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-5 sm:p-8 shadow-2xl space-y-5 w-full">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-[#121212]/40 pb-4">
             <div>
-              <h1 className="text-base sm:text-xl font-bold text-[#f4f1ea] tracking-tight">
+              <h2 className="text-base sm:text-xl font-bold text-[#f4f1ea] tracking-tight">
                 Tasas de envío en tiempo real
-              </h1>
+              </h2>
               <p className="text-xs sm:text-sm text-[#f4f1ea]/60 font-medium mt-0.5">
                 {loadingRates ? "Cargando actualización..." : `Actualizado ${lastUpdatedTime}`}
               </p>
@@ -978,10 +978,48 @@ export default function Home() {
 
         </section>
 
+        {/* SECCIÓN PREGUNTAS FRECUENTES (SEO ON-PAGE / KEYWORDS) */}
+        <section className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-6 sm:p-8 shadow-xl w-full space-y-4">
+          <h2 className="text-lg sm:text-xl font-bold text-[#b58e45] tracking-tight">
+            Preguntas Frecuentes sobre Envíos y Tasas de Cambio
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm text-[#f4f1ea]/80">
+            <div className="space-y-1.5 bg-[#121212]/40 p-4 rounded-xl border border-[#b58e45]/10">
+              <h3 className="font-bold text-[#f4f1ea]">¿Cómo se calcula el monto a enviar o recibir?</h3>
+              <p className="leading-relaxed">
+                Utiliza nuestras calculadoras interactivas ingresando la cantidad exacta que deseas enviar o recibir. El sistema aplica las tasas de cambio referenciales en tiempo real.
+              </p>
+            </div>
+            <div className="space-y-1.5 bg-[#121212]/40 p-4 rounded-xl border border-[#b58e45]/10">
+              <h3 className="font-bold text-[#f4f1ea]">¿Las tasas se actualizan constantemente?</h3>
+              <p className="leading-relaxed">
+                Sí, las tasas de cambio de AON Pay se actualizan dinámicamente según el mercado oficial e internacional para brindarte la mayor precisión.
+              </p>
+            </div>
+          </div>
+        </section>
+
       </div>
 
       {/* FOOTER */}
-      <footer className="w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl pt-8 mt-10 border-t border-[#b58e45]/20 text-center space-y-1">
+      <footer className="w-full max-w-md md:max-w-3xl lg:max-w-5xl xl:max-w-6xl pt-8 mt-10 border-t border-[#b58e45]/20 text-center space-y-3">
+        <div className="flex items-center justify-center gap-2">
+          <a
+            href="https://www.instagram.com/vendinero_cambios?igsh=aHB6OWIzazhlbXk="
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#121212]/60 hover:bg-[#b58e45]/20 border border-[#b58e45]/30 text-[#b58e45] text-xs sm:text-sm font-semibold transition-all hover:scale-105 active:scale-95"
+          >
+            <svg
+              className="w-4 h-4 fill-current"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
+            </svg>
+            <span>@vendinero_cambios</span>
+          </a>
+        </div>
         <p className="text-xs sm:text-sm text-[#f4f1ea]/60 font-medium">
           © 2026 <strong className="text-[#f4f1ea]">AON Pay</strong> ·{" "}
           <a
