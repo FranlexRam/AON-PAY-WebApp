@@ -84,6 +84,50 @@ function countryInfoCodeName(code: string): string {
   }
 }
 
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    const cleanValue = value.replace(/,/g, "").trim();
+    if (!cleanValue || isNaN(Number(cleanValue)) || parseFloat(cleanValue) <= 0) return;
+
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const isDisabled = !value || value.trim() === "" || value.trim() === "0.00";
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      disabled={isDisabled}
+      title={copied ? "Copiado!" : "Copiar valor"}
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+        isDisabled
+          ? "opacity-30 cursor-not-allowed text-[#f4f1ea]/40"
+          : copied
+          ? "bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/40 scale-105"
+          : "hover:bg-[#b58e45]/20 text-[#b58e45] hover:text-[#f4f1ea] active:scale-95"
+      }`}
+    >
+      {copied ? (
+        <>
+          <svg className="w-4 h-4 fill-current text-[#22c55e]" viewBox="0 0 20 20">
+            <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+          </svg>
+          <span className="text-[11px] font-bold text-[#22c55e]">Copiado</span>
+        </>
+      ) : (
+        <svg className="w-4 h-4 fill-current stroke-current stroke-0" viewBox="0 0 24 24">
+          <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 const DEFAULT_CURRENCIES: Currency[] = [
   { id: "usa", name: "Estados Unidos", code: "USD", flag: "🇺🇸", rate_to_usdt: 1, lauren_rate: 760, lauren_rate_out: 850, rate_from_peru: 3.75, rate_from_colombia: 3440, rate_from_chile: 1020, rate_from_usa: 1, rate_from_ecuador: 8, rate_from_brazil: 5.75, operator: "multiply" },
   { id: "ven", name: "Venezuela", code: "VES", flag: "🇻🇪", rate_to_usdt: 1, lauren_rate: 1, lauren_rate_out: 1, rate_from_peru: 1, rate_from_colombia: 1, rate_from_chile: 1, rate_from_usa: 1, rate_from_ecuador: 1, rate_from_brazil: 1, operator: "divide" },
@@ -783,21 +827,24 @@ export default function Home() {
                       </div>
                     )}
 
-                    <div className="relative flex items-center">
-                      <span className="text-xl sm:text-2xl font-bold text-[#b58e45] mr-1.5">
-                        {bcvMode === "EUR" ? "€" : "$"}
-                      </span>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="0.00"
-                        value={c2RecibeUsd}
-                        onKeyDown={handleKeyDown}
-                        onChange={(e) => handleC2RecibeUsdChange(e.target.value)}
-                        onBlur={handleC2RecibeUsdBlur}
-                        onFocus={() => setC2RecibeUsd((prev) => prev.replace(/,/g, ""))}
-                        className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
-                      />
+                    <div className="relative flex items-center justify-between gap-2">
+                      <div className="flex items-center w-full">
+                        <span className="text-xl sm:text-2xl font-bold text-[#b58e45] mr-1.5">
+                          {bcvMode === "EUR" ? "€" : "$"}
+                        </span>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="0.00"
+                          value={c2RecibeUsd}
+                          onKeyDown={handleKeyDown}
+                          onChange={(e) => handleC2RecibeUsdChange(e.target.value)}
+                          onBlur={handleC2RecibeUsdBlur}
+                          onFocus={() => setC2RecibeUsd((prev) => prev.replace(/,/g, ""))}
+                          className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
+                        />
+                      </div>
+                      <CopyButton value={c2RecibeUsd} />
                     </div>
                   </div>
                 )}
@@ -806,17 +853,20 @@ export default function Home() {
                   <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/70 block mb-1">
                     Para recibir ({targetCurrency.code})
                   </label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={c2Recibe}
-                    onKeyDown={handleKeyDown}
-                    onChange={(e) => handleC2RecibeChange(e.target.value)}
-                    onBlur={handleC2RecibeBlur}
-                    onFocus={() => setC2Recibe((prev) => prev.replace(/,/g, ""))}
-                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/30 text-base"
-                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={c2Recibe}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => handleC2RecibeChange(e.target.value)}
+                      onBlur={handleC2RecibeBlur}
+                      onFocus={() => setC2Recibe((prev) => prev.replace(/,/g, ""))}
+                      className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/30 text-base"
+                    />
+                    <CopyButton value={c2Recibe} />
+                  </div>
                   {targetCurrency.code === "VES" && c2Recibe && calculateRefEquivalent(c2Recibe) && (
                     <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
                       ≈ {bcvMode === "EUR" ? "€" : "$"}{calculateRefEquivalent(c2Recibe)} {bcvMode === "EUR" ? "EUR" : "USD"} {bcvMode === "CUSTOM" ? "al cambio personalizado" : "al cambio oficial BCV"}
@@ -828,13 +878,16 @@ export default function Home() {
                   <label className="text-xs sm:text-sm font-bold text-[#b58e45] block mb-1">
                     Hay que enviar ({originCurrency.code})
                   </label>
-                  <input
-                    type="text"
-                    readOnly
-                    placeholder="0.00"
-                    value={c2Envio}
-                    className="w-full bg-transparent text-xl sm:text-2xl font-extrabold text-[#f4f1ea] outline-none cursor-not-allowed text-base"
-                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      placeholder="0.00"
+                      value={c2Envio}
+                      className="w-full bg-transparent text-xl sm:text-2xl font-extrabold text-[#f4f1ea] outline-none cursor-not-allowed text-base"
+                    />
+                    <CopyButton value={c2Envio} />
+                  </div>
                   {originCurrency.code === "VES" && c2Envio && calculateRefEquivalent(c2Envio) && (
                     <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
                       ≈ {bcvMode === "EUR" ? "€" : "$"}{calculateRefEquivalent(c2Envio)} {bcvMode === "EUR" ? "EUR" : "USD"} {bcvMode === "CUSTOM" ? "al cambio personalizado" : "al cambio oficial BCV"}
@@ -897,30 +950,36 @@ export default function Home() {
                   <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/70 block mb-1">
                     Si se envían ({originCurrency.code})
                   </label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0.00"
-                    value={c1Envio}
-                    onKeyDown={handleKeyDown}
-                    onChange={(e) => handleC1EnvioChange(e.target.value)}
-                    onBlur={handleC1EnvioBlur}
-                    onFocus={() => setC1Envio((prev) => prev.replace(/,/g, ""))}
-                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
-                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={c1Envio}
+                      onKeyDown={handleKeyDown}
+                      onChange={(e) => handleC1EnvioChange(e.target.value)}
+                      onBlur={handleC1EnvioBlur}
+                      onFocus={() => setC1Envio((prev) => prev.replace(/,/g, ""))}
+                      className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#f4f1ea] outline-none placeholder-[#f4f1ea]/30 text-base"
+                    />
+                    <CopyButton value={c1Envio} />
+                  </div>
                 </div>
 
                 <div className="bg-[#121212]/20 border border-[#121212]/60 rounded-xl p-4 cursor-not-allowed">
                   <label className="text-xs sm:text-sm font-medium text-[#f4f1ea]/40 block mb-1">
                     Se reciben ({targetCurrency.code})
                   </label>
-                  <input
-                    type="text"
-                    readOnly
-                    placeholder="0.00"
-                    value={c1Recibe}
-                    className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/20 cursor-not-allowed text-base"
-                  />
+                  <div className="flex items-center justify-between gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      placeholder="0.00"
+                      value={c1Recibe}
+                      className="w-full bg-transparent text-xl sm:text-2xl font-bold text-[#cdead2] outline-none placeholder-[#f4f1ea]/20 cursor-not-allowed text-base"
+                    />
+                    <CopyButton value={c1Recibe} />
+                  </div>
                   {targetCurrency.code === "VES" && c1Recibe && calculateRefEquivalent(c1Recibe) && (
                     <p className="text-[11px] font-semibold text-[#b58e45] mt-1.5 animate-fade-in">
                       ≈ {bcvMode === "EUR" ? "€" : "$"}{calculateRefEquivalent(c1Recibe)} {bcvMode === "EUR" ? "EUR" : "USD"} {bcvMode === "CUSTOM" ? "al cambio personalizado" : "al cambio oficial BCV"}
