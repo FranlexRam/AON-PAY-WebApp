@@ -282,7 +282,7 @@ export default function AdminGenerarTasas() {
                           </span>
                           {/* URL DE LA PÁGINA WEB */}
                           <span className="text-[11px] font-black tracking-wide text-[#f4f1ea]/90">
-                            www.aonpay.com
+                            www.aonpayapp.com
                           </span>
                         </div>
                       </div>
