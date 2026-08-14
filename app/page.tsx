@@ -88,7 +88,6 @@ function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    // Normalizar para copiar limpiamente el número
     const cleanValue = value.replace(/\./g, "").replace(",", ".").trim();
     if (!cleanValue || isNaN(Number(cleanValue)) || parseFloat(cleanValue) <= 0) return;
 
@@ -347,7 +346,7 @@ export default function Home() {
       if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
         return monto * currentRate;
       } else {
-        return monto * currentRate;
+        return monto / currentRate; // <--- CORREGIDO: Ahora divide para PEN, ECU y USA
       }
     } else if (originCurrency.id === "usa") {
       if (targetCurrency.id === "ecu") {
@@ -394,7 +393,7 @@ export default function Home() {
       if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
         return monto / currentRate;
       } else {
-        return monto / currentRate;
+        return monto * currentRate; // <--- CORREGIDO: Para saber cuánto CLP enviar dado PEN/ECU/USA, multiplica por la tasa
       }
     } else if (originCurrency.id === "usa") {
       if (targetCurrency.id === "ecu") {
@@ -456,7 +455,6 @@ export default function Home() {
 
   const sanitizePositiveNumber = (val: string): string => {
     let clean = val.replace(/[^0-9.,]/g, "");
-    // Permitir ingreso de punto o coma como separador decimal durante la escritura
     return clean;
   };
 
