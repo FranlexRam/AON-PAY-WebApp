@@ -308,7 +308,7 @@ export default function Home() {
   const currentRate = useMemo(() => {
     if (targetCurrency.code === "VES" && originCurrency.code !== "VES") {
       const rate = originCurrency.lauren_rate || 1;
-      return originCurrency.code === "COP" ? 1 / rate : rate;
+      return rate;
     }
 
     if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
@@ -327,7 +327,10 @@ export default function Home() {
   }, [originCurrency, targetCurrency]);
 
   const calculateRecibeFromEnvio = (monto: number): number => {
-    if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
+    if (targetCurrency.code === "VES" && originCurrency.code !== "VES") {
+      const rate = originCurrency.lauren_rate || 1;
+      return originCurrency.code === "COP" ? monto / rate : monto * rate;
+    } else if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
       const rateOut = targetCurrency.lauren_rate_out || 1;
       return targetCurrency.code === "COP" ? monto * rateOut : monto / rateOut;
     } else if (originCurrency.id === "per") {
@@ -346,7 +349,7 @@ export default function Home() {
       if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
         return monto * currentRate;
       } else {
-        return monto / currentRate; // <--- CORREGIDO: Ahora divide para PEN, ECU y USA
+        return monto / currentRate;
       }
     } else if (originCurrency.id === "usa") {
       if (targetCurrency.id === "ecu") {
@@ -374,7 +377,10 @@ export default function Home() {
   };
 
   const calculateEnvioFromRecibe = (monto: number): number => {
-    if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
+    if (targetCurrency.code === "VES" && originCurrency.code !== "VES") {
+      const rate = originCurrency.lauren_rate || 1;
+      return originCurrency.code === "COP" ? monto * rate : monto / rate;
+    } else if (originCurrency.code === "VES" && targetCurrency.code !== "VES") {
       const rateOut = targetCurrency.lauren_rate_out || 1;
       return targetCurrency.code === "COP" ? monto / rateOut : monto * rateOut;
     } else if (originCurrency.id === "per") {
@@ -393,7 +399,7 @@ export default function Home() {
       if (targetCurrency.id === "col" || targetCurrency.id === "bra") {
         return monto / currentRate;
       } else {
-        return monto * currentRate; // <--- CORREGIDO: Para saber cuánto CLP enviar dado PEN/ECU/USA, multiplica por la tasa
+        return monto * currentRate;
       }
     } else if (originCurrency.id === "usa") {
       if (targetCurrency.id === "ecu") {
@@ -755,6 +761,8 @@ export default function Home() {
                       : `1 ${targetCurrency.code} = ${formatRate(targetCurrency.lauren_rate_out || 1)} VES`
                   ) : originCurrency.code === "COP" && targetCurrency.code === "VES" ? (
                     `1 VES = ${formatRate(originCurrency.lauren_rate || 1)} COP`
+                  ) : targetCurrency.code === "VES" ? (
+                    `1 ${originCurrency.code} = ${formatRate(originCurrency.lauren_rate || 1)} VES`
                   ) : originCurrency.id === "per" && (targetCurrency.id === "ecu" || targetCurrency.id === "usa") ? (
                     `1 ${targetCurrency.code} = ${formatRate(currentRate)} PEN`
                   ) : originCurrency.id === "col" && targetCurrency.id !== "bra" ? (
