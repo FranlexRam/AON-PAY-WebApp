@@ -33,7 +33,7 @@ const securityHeaders = [
       style-src 'self' 'unsafe-inline';
       img-src 'self' blob: data: https:;
       font-src 'self' data:;
-      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://v6.exchangerate-api.com;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://v6.exchangerate-api.com https://flagcdn.com;
       object-src 'none';
       base-uri 'self';
       form-action 'self';
