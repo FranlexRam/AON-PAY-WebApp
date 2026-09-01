@@ -52,6 +52,7 @@ export default function AdminCrmPage() {
   const [destCountryFilter, setDestCountryFilter] = useState<string>('all');
   const [dateRangeFilter, setDateRangeFilter] = useState<string>('all');
   const [selectedClientPhone, setSelectedClientPhone] = useState<string | null>(null);
+  const [filterOnlyConfirmed, setFilterOnlyConfirmed] = useState<boolean>(false);
 
   // Paginación
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -61,7 +62,7 @@ export default function AdminCrmPage() {
     fetchCrmData();
 
     const txChannel = supabase
-      .channel('realtime_transactions_crm_v2')
+      .channel('realtime_transactions_crm_v3')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'transactions' },
@@ -99,11 +100,10 @@ export default function AdminCrmPage() {
     }
   };
 
-  // Filtrado temporal y saneamiento de transacciones (Elimina 'Origen' residual)
+  // Filtrado temporal y saneamiento de transacciones
   const sanitizedDateFilteredTransactions = useMemo(() => {
     const now = new Date();
     return transactions.filter((tx) => {
-      // Ignorar registros erróneos con 'Origen'
       if (!tx.origin_country || tx.origin_country.toLowerCase() === 'origen') return false;
 
       if (dateRangeFilter === 'all') return true;
@@ -121,12 +121,14 @@ export default function AdminCrmPage() {
     return sanitizedDateFilteredTransactions.reduce((acc, curr) => acc + (curr.usd_equivalent || 0), 0);
   }, [sanitizedDateFilteredTransactions]);
 
-  // Volumen Real Cerrado (Handover / Confirmado)
-  const confirmedVolumeUSD = useMemo(() => {
-    return sanitizedDateFilteredTransactions
-      .filter((tx) => tx.status && tx.status.toLowerCase() !== 'quoted')
-      .reduce((acc, curr) => acc + (curr.usd_equivalent || 0), 0);
+  // Transacciones cerradas / Handover
+  const confirmedTransactions = useMemo(() => {
+    return sanitizedDateFilteredTransactions.filter((tx) => tx.status && tx.status.toLowerCase() !== 'quoted');
   }, [sanitizedDateFilteredTransactions]);
+
+  const confirmedVolumeUSD = useMemo(() => {
+    return confirmedTransactions.reduce((acc, curr) => acc + (curr.usd_equivalent || 0), 0);
+  }, [confirmedTransactions]);
 
   const totalTransactionsCount = sanitizedDateFilteredTransactions.length;
 
@@ -135,25 +137,30 @@ export default function AdminCrmPage() {
     return totalVolumeUSD / totalTransactionsCount;
   }, [totalVolumeUSD, totalTransactionsCount]);
 
-  // Cliente Top por Volumen
+  // Cliente Top: Mayor capital cerrado efectivamente
   const topVolumeClient = useMemo(() => {
-    if (sanitizedDateFilteredTransactions.length === 0) return { phone: 'N/A', name: 'N/A', amount: 0 };
-    const userTotals: Record<string, number> = {};
-    sanitizedDateFilteredTransactions.forEach((tx) => {
-      userTotals[tx.client_phone] = (userTotals[tx.client_phone] || 0) + (tx.usd_equivalent || 0);
+    if (confirmedTransactions.length === 0) return { phone: 'N/A', name: 'N/A', amount: 0, ops: 0 };
+    const userTotals: Record<string, { totalUsd: number; count: number }> = {};
+    confirmedTransactions.forEach((tx) => {
+      if (!userTotals[tx.client_phone]) {
+        userTotals[tx.client_phone] = { totalUsd: 0, count: 0 };
+      }
+      userTotals[tx.client_phone].totalUsd += tx.usd_equivalent || 0;
+      userTotals[tx.client_phone].count += 1;
     });
-    const sorted = Object.entries(userTotals).sort((a, b) => b[1] - a[1]);
-    if (!sorted[0]) return { phone: 'N/A', name: 'N/A', amount: 0 };
+    const sorted = Object.entries(userTotals).sort((a, b) => b[1].totalUsd - a[1].totalUsd);
+    if (!sorted[0]) return { phone: 'N/A', name: 'N/A', amount: 0, ops: 0 };
     const topPhone = sorted[0][0];
     const clientData = clients.find((c) => c.phone === topPhone);
     return {
       phone: topPhone,
       name: clientData?.full_name || 'Sin registrar',
-      amount: sorted[0][1]
+      amount: sorted[0][1].totalUsd,
+      ops: sorted[0][1].count
     };
-  }, [sanitizedDateFilteredTransactions, clients]);
+  }, [confirmedTransactions, clients]);
 
-  // Cliente Más Fiel
+  // Cliente Más Fiel (Frecuencia)
   const mostLoyalClient = useMemo(() => {
     if (sanitizedDateFilteredTransactions.length === 0) return { phone: 'N/A', name: 'N/A', count: 0 };
     const userCounts: Record<string, number> = {};
@@ -174,11 +181,8 @@ export default function AdminCrmPage() {
   // Tasa de Conversión
   const conversionRate = useMemo(() => {
     if (sanitizedDateFilteredTransactions.length === 0) return 0;
-    const handoverCount = sanitizedDateFilteredTransactions.filter(
-      (tx) => tx.status && tx.status.toLowerCase() !== 'quoted'
-    ).length;
-    return (handoverCount / sanitizedDateFilteredTransactions.length) * 100;
-  }, [sanitizedDateFilteredTransactions]);
+    return (confirmedTransactions.length / sanitizedDateFilteredTransactions.length) * 100;
+  }, [sanitizedDateFilteredTransactions, confirmedTransactions]);
 
   // Distribución de Rutas Válidas
   const routeDistribution = useMemo(() => {
@@ -233,8 +237,10 @@ export default function AdminCrmPage() {
 
   // Directorio de Clientes
   const consolidatedClients = useMemo(() => {
+    const activeBaseTransactions = filterOnlyConfirmed ? confirmedTransactions : sanitizedDateFilteredTransactions;
+
     const txMap: Record<string, { count: number; totalUsd: number }> = {};
-    sanitizedDateFilteredTransactions.forEach((tx) => {
+    activeBaseTransactions.forEach((tx) => {
       if (!txMap[tx.client_phone]) {
         txMap[tx.client_phone] = { count: 0, totalUsd: 0 };
       }
@@ -243,13 +249,14 @@ export default function AdminCrmPage() {
     });
 
     return clients
-      .filter((c) => c.contact_type === 'client') // Solo contactos clientes
+      .filter((c) => c.contact_type === 'client')
       .map((c) => ({
         ...c,
         txCount: txMap[c.phone]?.count || 0,
         totalVolume: txMap[c.phone]?.totalUsd || 0
       }))
       .filter((c) => {
+        if (filterOnlyConfirmed && c.txCount === 0) return false;
         const matchesSearch =
           c.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (c.full_name && c.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -260,11 +267,12 @@ export default function AdminCrmPage() {
         return matchesSearch && matchesStatus && matchesOrigin && matchesDest;
       })
       .sort((a, b) => b.totalVolume - a.totalVolume);
-  }, [clients, sanitizedDateFilteredTransactions, searchTerm, statusFilter, originCountryFilter, destCountryFilter]);
+  }, [clients, sanitizedDateFilteredTransactions, confirmedTransactions, filterOnlyConfirmed, searchTerm, statusFilter, originCountryFilter, destCountryFilter]);
 
   // Historial Filtrado
   const filteredTransactions = useMemo(() => {
     return sanitizedDateFilteredTransactions.filter((tx) => {
+      if (filterOnlyConfirmed && (!tx.status || tx.status.toLowerCase() === 'quoted')) return false;
       if (selectedClientPhone && tx.client_phone !== selectedClientPhone) return false;
       if (searchTerm) {
         const matchesPhone = tx.client_phone.includes(searchTerm);
@@ -275,7 +283,7 @@ export default function AdminCrmPage() {
       if (destCountryFilter !== 'all' && tx.dest_country !== destCountryFilter) return false;
       return true;
     });
-  }, [sanitizedDateFilteredTransactions, selectedClientPhone, searchTerm, originCountryFilter, destCountryFilter]);
+  }, [sanitizedDateFilteredTransactions, filterOnlyConfirmed, selectedClientPhone, searchTerm, originCountryFilter, destCountryFilter]);
 
   // Paginación
   const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
@@ -354,12 +362,30 @@ export default function AdminCrmPage() {
             <span className="text-xs text-[#f4f1ea]/50 font-medium">Equivalente global USD</span>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-lg">
-            <span className="text-xs uppercase font-bold text-[#f4f1ea]/60 tracking-wider">Volumen Confirmado</span>
+          {/* Tarjeta interactiva de Volumen Confirmado */}
+          <div
+            onClick={() => {
+              setFilterOnlyConfirmed(!filterOnlyConfirmed);
+              setCurrentPage(1);
+            }}
+            className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between shadow-lg group ${
+              filterOnlyConfirmed
+                ? 'bg-emerald-950/40 border-emerald-500 scale-[1.02] shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+                : 'bg-[#121212] border-[#b58e45]/20 hover:border-emerald-500/50'
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-xs uppercase font-bold text-[#f4f1ea]/60 tracking-wider">Volumen Confirmado</span>
+              <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded transition-all ${filterOnlyConfirmed ? 'bg-emerald-500 text-[#0d0d0d]' : 'bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-[#0d0d0d]'}`}>
+                {filterOnlyConfirmed ? 'FILTRANDO' : 'VER TRANS.'}
+              </span>
+            </div>
             <div className="text-2xl lg:text-3xl font-black text-emerald-400 my-2">
               ${confirmedVolumeUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <span className="text-xs text-[#f4f1ea]/50 font-medium">Transacciones en Handover</span>
+            <span className="text-xs text-emerald-400/80 font-medium">
+              {confirmedTransactions.length} operaciones cerradas
+            </span>
           </div>
 
           <div className="p-5 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-lg">
@@ -378,14 +404,20 @@ export default function AdminCrmPage() {
             <span className="text-xs text-[#b58e45] font-bold">{mostLoyalClient.count} cotizaciones</span>
           </div>
 
+          {/* Cliente Top calculado estrictamente por volumen cerrado */}
           <div className="p-5 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-lg">
-            <span className="text-xs uppercase font-bold text-[#f4f1ea]/60 tracking-wider">Cliente Top (Volumen)</span>
+            <span className="text-xs uppercase font-bold text-[#f4f1ea]/60 tracking-wider">Cliente Top (Cerrado)</span>
             <div className="text-sm font-bold text-[#f4f1ea] truncate my-2" title={topVolumeClient.name}>
               {topVolumeClient.name}
             </div>
-            <span className="text-xs text-emerald-400 font-bold">
-              ${topVolumeClient.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
-            </span>
+            <div className="flex flex-col">
+              <span className="text-xs text-emerald-400 font-bold">
+                ${topVolumeClient.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
+              </span>
+              <span className="text-[10px] text-[#f4f1ea]/40 font-medium">
+                {topVolumeClient.ops > 0 ? `${topVolumeClient.ops} ops confirmadas` : 'Sin transacciones'}
+              </span>
+            </div>
           </div>
 
           <div className="p-5 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-lg">
@@ -399,8 +431,6 @@ export default function AdminCrmPage() {
 
         {/* DISTRIBUCIÓN DE RUTAS Y PICOS DE TRÁFICO */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Barras de Distribución de Rutas */}
           <div className="lg:col-span-2 p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 space-y-4 shadow-lg">
             <div className="flex justify-between items-center">
               <div>
@@ -436,7 +466,6 @@ export default function AdminCrmPage() {
             </div>
           </div>
 
-          {/* Telemetría de Picos */}
           <div className="p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between space-y-5 shadow-lg">
             <div>
               <h3 className="text-base font-bold text-[#f4f1ea]">Picos de Mayor Demanda</h3>
@@ -465,7 +494,14 @@ export default function AdminCrmPage() {
         <section className="p-6 sm:p-7 rounded-2xl bg-[#121212] border border-[#b58e45]/20 space-y-5 shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-black text-[#f4f1ea]">Directorio de Clientes Autorizados</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-black text-[#f4f1ea]">Directorio de Clientes Autorizados</h2>
+                {filterOnlyConfirmed && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold">
+                    Solo Clientes con Cierres Exitosos
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-[#f4f1ea]/60">Haz clic en cualquier cliente para filtrar su historial específico abajo</p>
             </div>
 
@@ -489,7 +525,6 @@ export default function AdminCrmPage() {
                 <option value="human">👤 Modo Humano</option>
               </select>
 
-              {/* Filtro País de Origen */}
               <select
                 value={originCountryFilter}
                 onChange={(e) => { setOriginCountryFilter(e.target.value); setCurrentPage(1); }}
@@ -501,7 +536,6 @@ export default function AdminCrmPage() {
                 ))}
               </select>
 
-              {/* Filtro País de Destino */}
               <select
                 value={destCountryFilter}
                 onChange={(e) => { setDestCountryFilter(e.target.value); setCurrentPage(1); }}
@@ -512,6 +546,15 @@ export default function AdminCrmPage() {
                   <option key={`dest-${c}`} value={c}>{c}</option>
                 ))}
               </select>
+
+              {filterOnlyConfirmed && (
+                <button
+                  onClick={() => setFilterOnlyConfirmed(false)}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-bold transition-all cursor-pointer"
+                >
+                  Ver Todas las Cotizaciones ✕
+                </button>
+              )}
 
               {selectedClientPhone && (
                 <button
@@ -530,7 +573,7 @@ export default function AdminCrmPage() {
                 <tr>
                   <th className="py-4 px-5">Contacto</th>
                   <th className="py-4 px-5">Ruta Habitual</th>
-                  <th className="py-4 px-5 text-center">Frecuencia</th>
+                  <th className="py-4 px-5 text-center">Operaciones</th>
                   <th className="py-4 px-5 text-right">Volumen USD</th>
                   <th className="py-4 px-5 text-center">Estado Cyra</th>
                   <th className="py-4 px-5 text-center">Acción</th>
@@ -602,9 +645,16 @@ export default function AdminCrmPage() {
         <section className="p-6 sm:p-7 rounded-2xl bg-[#121212] border border-[#b58e45]/20 space-y-5 shadow-lg">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-black text-[#f4f1ea]">
-                Auditoría Completa de Cotizaciones ({filteredTransactions.length} registros)
-              </h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-black text-[#f4f1ea]">
+                  Auditoría de Transacciones ({filteredTransactions.length} registros)
+                </h2>
+                {filterOnlyConfirmed && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold">
+                    Filtro: Solo Cierres Confirmados
+                  </span>
+                )}
+              </div>
               {selectedClientPhone && (
                 <p className="text-sm text-[#b58e45] font-bold mt-1">
                   Mostrando únicamente transacciones de: +{selectedClientPhone}
