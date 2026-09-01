@@ -476,19 +476,26 @@ export default function AdminDashboard() {
 
       <div className="w-full max-w-lg space-y-6">
 
-        {/* ENCABEZADO ADMIN CON BOTÓN DE RESUMEN ORGANIZADO DE TASAS */}
+        {/* ENCABEZADO ADMIN CON ACCESO AL MÓDULO BI & CRM */}
         <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-3">
           <div>
             <h1 className="text-[1rem] font-bold text-[#f4f1ea]">Gestión de Tasas AON Pay</h1>
             <p className="text-[0.75rem] text-[#f4f1ea]/60 truncate max-w-[200px]">{adminEmail}</p>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              onClick={() => router.push("/admin/crm")}
+              className="bg-[#b58e45] hover:bg-[#9d7938] text-[#121212] font-black border border-[#b58e45] px-3 py-1.5 rounded-xl text-[0.75rem] transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-[0_2px_10px_rgba(181,142,69,0.3)]"
+            >
+              <span>📈</span>
+              <span>BI & CRM</span>
+            </button>
             <button
               onClick={() => router.push("/admin/generar-tasas")}
-              className="flex-1 sm:flex-none bg-[#b58e45]/15 hover:bg-[#b58e45] text-[#b58e45] hover:text-[#121212] border border-[#b58e45]/40 px-3 py-1.5 rounded-xl text-[0.75rem] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              className="bg-[#b58e45]/15 hover:bg-[#b58e45] text-[#b58e45] hover:text-[#121212] border border-[#b58e45]/40 px-3 py-1.5 rounded-xl text-[0.75rem] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <span>📊</span>
-              <span>Resumen Organizado de Tasas</span>
+              <span>Resumen</span>
             </button>
             <button
               onClick={handleLogout}
