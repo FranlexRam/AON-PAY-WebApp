@@ -30,6 +30,16 @@ interface Client {
   created_at: string;
 }
 
+const VALID_COUNTRIES = [
+  'Perú',
+  'Colombia',
+  'Chile',
+  'Estados Unidos',
+  'Ecuador',
+  'Brasil',
+  'Venezuela'
+];
+
 export default function AdminCrmPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -38,12 +48,12 @@ export default function AdminCrmPage() {
   // Filtros
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [contactTypeFilter, setContactTypeFilter] = useState<string>('all');
-  const [routeFilter, setRouteFilter] = useState<string>('all');
+  const [originCountryFilter, setOriginCountryFilter] = useState<string>('all');
+  const [destCountryFilter, setDestCountryFilter] = useState<string>('all');
   const [dateRangeFilter, setDateRangeFilter] = useState<string>('all');
   const [selectedClientPhone, setSelectedClientPhone] = useState<string | null>(null);
 
-  // Paginación de Historial
+  // Paginación
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
 
@@ -51,7 +61,7 @@ export default function AdminCrmPage() {
     fetchCrmData();
 
     const txChannel = supabase
-      .channel('realtime_transactions_crm')
+      .channel('realtime_transactions_crm_v2')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'transactions' },
@@ -89,10 +99,14 @@ export default function AdminCrmPage() {
     }
   };
 
-  const dateFilteredTransactions = useMemo(() => {
-    if (dateRangeFilter === 'all') return transactions;
+  // Filtrado temporal y saneamiento de transacciones (Elimina 'Origen' residual)
+  const sanitizedDateFilteredTransactions = useMemo(() => {
     const now = new Date();
     return transactions.filter((tx) => {
+      // Ignorar registros erróneos con 'Origen'
+      if (!tx.origin_country || tx.origin_country.toLowerCase() === 'origen') return false;
+
+      if (dateRangeFilter === 'all') return true;
       const txDate = new Date(tx.created_at);
       const diffDays = (now.getTime() - txDate.getTime()) / (1000 * 3600 * 24);
       if (dateRangeFilter === 'today') return diffDays <= 1;
@@ -102,31 +116,30 @@ export default function AdminCrmPage() {
     });
   }, [transactions, dateRangeFilter]);
 
-  const uniqueRoutes = useMemo(() => {
-    const routesSet = new Set<string>();
-    transactions.forEach((tx) => {
-      if (tx.origin_country && tx.dest_country) {
-        routesSet.add(`${tx.origin_country} ➔ ${tx.dest_country}`);
-      }
-    });
-    return Array.from(routesSet).sort();
-  }, [transactions]);
-
+  // KPIs
   const totalVolumeUSD = useMemo(() => {
-    return dateFilteredTransactions.reduce((acc, curr) => acc + (curr.usd_equivalent || 0), 0);
-  }, [dateFilteredTransactions]);
+    return sanitizedDateFilteredTransactions.reduce((acc, curr) => acc + (curr.usd_equivalent || 0), 0);
+  }, [sanitizedDateFilteredTransactions]);
 
-  const totalTransactionsCount = dateFilteredTransactions.length;
+  // Volumen Real Cerrado (Handover / Confirmado)
+  const confirmedVolumeUSD = useMemo(() => {
+    return sanitizedDateFilteredTransactions
+      .filter((tx) => tx.status && tx.status.toLowerCase() !== 'quoted')
+      .reduce((acc, curr) => acc + (curr.usd_equivalent || 0), 0);
+  }, [sanitizedDateFilteredTransactions]);
+
+  const totalTransactionsCount = sanitizedDateFilteredTransactions.length;
 
   const averageTicketUSD = useMemo(() => {
     if (totalTransactionsCount === 0) return 0;
     return totalVolumeUSD / totalTransactionsCount;
   }, [totalVolumeUSD, totalTransactionsCount]);
 
+  // Cliente Top por Volumen
   const topVolumeClient = useMemo(() => {
-    if (dateFilteredTransactions.length === 0) return { phone: 'N/A', name: 'N/A', amount: 0 };
+    if (sanitizedDateFilteredTransactions.length === 0) return { phone: 'N/A', name: 'N/A', amount: 0 };
     const userTotals: Record<string, number> = {};
-    dateFilteredTransactions.forEach((tx) => {
+    sanitizedDateFilteredTransactions.forEach((tx) => {
       userTotals[tx.client_phone] = (userTotals[tx.client_phone] || 0) + (tx.usd_equivalent || 0);
     });
     const sorted = Object.entries(userTotals).sort((a, b) => b[1] - a[1]);
@@ -138,12 +151,13 @@ export default function AdminCrmPage() {
       name: clientData?.full_name || 'Sin registrar',
       amount: sorted[0][1]
     };
-  }, [dateFilteredTransactions, clients]);
+  }, [sanitizedDateFilteredTransactions, clients]);
 
+  // Cliente Más Fiel
   const mostLoyalClient = useMemo(() => {
-    if (dateFilteredTransactions.length === 0) return { phone: 'N/A', name: 'N/A', count: 0 };
+    if (sanitizedDateFilteredTransactions.length === 0) return { phone: 'N/A', name: 'N/A', count: 0 };
     const userCounts: Record<string, number> = {};
-    dateFilteredTransactions.forEach((tx) => {
+    sanitizedDateFilteredTransactions.forEach((tx) => {
       userCounts[tx.client_phone] = (userCounts[tx.client_phone] || 0) + 1;
     });
     const sorted = Object.entries(userCounts).sort((a, b) => b[1] - a[1]);
@@ -155,32 +169,35 @@ export default function AdminCrmPage() {
       name: clientData?.full_name || 'Sin registrar',
       count: sorted[0][1]
     };
-  }, [dateFilteredTransactions, clients]);
+  }, [sanitizedDateFilteredTransactions, clients]);
 
+  // Tasa de Conversión
   const conversionRate = useMemo(() => {
-    if (dateFilteredTransactions.length === 0) return 0;
-    const handoverCount = dateFilteredTransactions.filter(
+    if (sanitizedDateFilteredTransactions.length === 0) return 0;
+    const handoverCount = sanitizedDateFilteredTransactions.filter(
       (tx) => tx.status && tx.status.toLowerCase() !== 'quoted'
     ).length;
-    return (handoverCount / dateFilteredTransactions.length) * 100;
-  }, [dateFilteredTransactions]);
+    return (handoverCount / sanitizedDateFilteredTransactions.length) * 100;
+  }, [sanitizedDateFilteredTransactions]);
 
+  // Distribución de Rutas Válidas
   const routeDistribution = useMemo(() => {
-    if (dateFilteredTransactions.length === 0) return [];
+    if (sanitizedDateFilteredTransactions.length === 0) return [];
     const counts: Record<string, number> = {};
-    dateFilteredTransactions.forEach((tx) => {
-      const rKey = `${tx.origin_country || 'Origen'} ➔ ${tx.dest_country || 'Destino'}`;
+    sanitizedDateFilteredTransactions.forEach((tx) => {
+      const rKey = `${tx.origin_country} ➔ ${tx.dest_country}`;
       counts[rKey] = (counts[rKey] || 0) + 1;
     });
     return Object.entries(counts)
       .map(([route, count]) => ({
         route,
         count,
-        percentage: ((count / dateFilteredTransactions.length) * 100).toFixed(1)
+        percentage: ((count / sanitizedDateFilteredTransactions.length) * 100).toFixed(1)
       }))
       .sort((a, b) => b.count - a.count);
-  }, [dateFilteredTransactions]);
+  }, [sanitizedDateFilteredTransactions]);
 
+  // Picos
   const peakStats = useMemo(() => {
     const daysMap: Record<string, number> = {
       'Lunes': 0, 'Martes': 0, 'Miércoles': 0, 'Jueves': 0, 'Viernes': 0, 'Sábado': 0, 'Domingo': 0
@@ -188,7 +205,7 @@ export default function AdminCrmPage() {
     const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
     const hoursMap: Record<number, number> = {};
 
-    dateFilteredTransactions.forEach((tx) => {
+    sanitizedDateFilteredTransactions.forEach((tx) => {
       const d = new Date(tx.created_at);
       const dayName = dayNames[d.getDay()];
       if (daysMap[dayName] !== undefined) daysMap[dayName] += 1;
@@ -212,11 +229,12 @@ export default function AdminCrmPage() {
       peakDay: topDayEntry && topDayEntry[1] > 0 ? `${topDayEntry[0]} (${topDayEntry[1]} ops)` : 'Sin datos',
       peakHour: topHourEntry ? `${formatHour(topHourEntry[0])} (${topHourEntry[1]} ops)` : 'Sin datos'
     };
-  }, [dateFilteredTransactions]);
+  }, [sanitizedDateFilteredTransactions]);
 
+  // Directorio de Clientes
   const consolidatedClients = useMemo(() => {
     const txMap: Record<string, { count: number; totalUsd: number }> = {};
-    dateFilteredTransactions.forEach((tx) => {
+    sanitizedDateFilteredTransactions.forEach((tx) => {
       if (!txMap[tx.client_phone]) {
         txMap[tx.client_phone] = { count: 0, totalUsd: 0 };
       }
@@ -225,6 +243,7 @@ export default function AdminCrmPage() {
     });
 
     return clients
+      .filter((c) => c.contact_type === 'client') // Solo contactos clientes
       .map((c) => ({
         ...c,
         txCount: txMap[c.phone]?.count || 0,
@@ -235,31 +254,30 @@ export default function AdminCrmPage() {
           c.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (c.full_name && c.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-        const matchesType = contactTypeFilter === 'all' || c.contact_type === contactTypeFilter;
-        const clientRoute = `${c.preferred_origin_country || ''} ➔ ${c.preferred_dest_country || ''}`;
-        const matchesRoute = routeFilter === 'all' || clientRoute.includes(routeFilter);
+        const matchesOrigin = originCountryFilter === 'all' || (c.preferred_origin_country && c.preferred_origin_country.includes(originCountryFilter));
+        const matchesDest = destCountryFilter === 'all' || (c.preferred_dest_country && c.preferred_dest_country.includes(destCountryFilter));
 
-        return matchesSearch && matchesStatus && matchesType && matchesRoute;
+        return matchesSearch && matchesStatus && matchesOrigin && matchesDest;
       })
       .sort((a, b) => b.totalVolume - a.totalVolume);
-  }, [clients, dateFilteredTransactions, searchTerm, statusFilter, contactTypeFilter, routeFilter]);
+  }, [clients, sanitizedDateFilteredTransactions, searchTerm, statusFilter, originCountryFilter, destCountryFilter]);
 
+  // Historial Filtrado
   const filteredTransactions = useMemo(() => {
-    return dateFilteredTransactions.filter((tx) => {
+    return sanitizedDateFilteredTransactions.filter((tx) => {
       if (selectedClientPhone && tx.client_phone !== selectedClientPhone) return false;
       if (searchTerm) {
         const matchesPhone = tx.client_phone.includes(searchTerm);
         const matchesRoute = `${tx.origin_country} ${tx.dest_country}`.toLowerCase().includes(searchTerm.toLowerCase());
         if (!matchesPhone && !matchesRoute) return false;
       }
-      if (routeFilter !== 'all') {
-        const txRoute = `${tx.origin_country} ➔ ${tx.dest_country}`;
-        if (txRoute !== routeFilter) return false;
-      }
+      if (originCountryFilter !== 'all' && tx.origin_country !== originCountryFilter) return false;
+      if (destCountryFilter !== 'all' && tx.dest_country !== destCountryFilter) return false;
       return true;
     });
-  }, [dateFilteredTransactions, selectedClientPhone, searchTerm, routeFilter]);
+  }, [sanitizedDateFilteredTransactions, selectedClientPhone, searchTerm, originCountryFilter, destCountryFilter]);
 
+  // Paginación
   const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
   const paginatedTransactions = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -337,11 +355,11 @@ export default function AdminCrmPage() {
           </div>
 
           <div className="p-5 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-lg">
-            <span className="text-xs uppercase font-bold text-[#f4f1ea]/60 tracking-wider">Operaciones</span>
-            <div className="text-2xl lg:text-3xl font-black text-[#f4f1ea] my-2">
-              {totalTransactionsCount}
+            <span className="text-xs uppercase font-bold text-[#f4f1ea]/60 tracking-wider">Volumen Confirmado</span>
+            <div className="text-2xl lg:text-3xl font-black text-emerald-400 my-2">
+              ${confirmedVolumeUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <span className="text-xs text-[#f4f1ea]/50 font-medium">Cotizaciones registradas</span>
+            <span className="text-xs text-[#f4f1ea]/50 font-medium">Transacciones en Handover</span>
           </div>
 
           <div className="p-5 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-lg">
@@ -387,7 +405,7 @@ export default function AdminCrmPage() {
             <div className="flex justify-between items-center">
               <div>
                 <h3 className="text-base font-bold text-[#f4f1ea]">Distribución de Operaciones por Ruta</h3>
-                <p className="text-xs text-[#f4f1ea]/60">Participación porcentual sobre la matriz de rutas</p>
+                <p className="text-xs text-[#f4f1ea]/60">Participación porcentual sobre la matriz de rutas oficiales</p>
               </div>
               <span className="text-sm font-bold text-[#b58e45] bg-[#b58e45]/10 px-3 py-1 rounded-lg border border-[#b58e45]/30">
                 {routeDistribution.length} Rutas Activas
@@ -396,7 +414,7 @@ export default function AdminCrmPage() {
 
             <div className="space-y-4 max-h-64 overflow-y-auto pr-2">
               {routeDistribution.length === 0 ? (
-                <p className="text-sm text-[#f4f1ea]/40 py-6 text-center">No hay cotizaciones para el rango seleccionado.</p>
+                <p className="text-sm text-[#f4f1ea]/40 py-6 text-center">No hay cotizaciones válidas para el rango seleccionado.</p>
               ) : (
                 routeDistribution.map((item) => (
                   <div key={item.route} className="space-y-1.5">
@@ -447,8 +465,8 @@ export default function AdminCrmPage() {
         <section className="p-6 sm:p-7 rounded-2xl bg-[#121212] border border-[#b58e45]/20 space-y-5 shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h2 className="text-xl font-black text-[#f4f1ea]">Directorio de Clientes & Fidelidad</h2>
-              <p className="text-sm text-[#f4f1ea]/60">Haz clic en cualquier fila para filtrar su historial específico abajo</p>
+              <h2 className="text-xl font-black text-[#f4f1ea]">Directorio de Clientes Autorizados</h2>
+              <p className="text-sm text-[#f4f1ea]/60">Haz clic en cualquier cliente para filtrar su historial específico abajo</p>
             </div>
 
             {/* Filtros */}
@@ -458,7 +476,7 @@ export default function AdminCrmPage() {
                 placeholder="Buscar por teléfono o nombre..."
                 value={searchTerm}
                 onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="px-4 py-2 rounded-xl bg-[#0d0d0d] border border-[#b58e45]/30 focus:border-[#b58e45] text-sm text-[#f4f1ea] outline-none w-60"
+                className="px-4 py-2 rounded-xl bg-[#0d0d0d] border border-[#b58e45]/30 focus:border-[#b58e45] text-sm text-[#f4f1ea] outline-none w-56"
               />
 
               <select
@@ -471,24 +489,27 @@ export default function AdminCrmPage() {
                 <option value="human">👤 Modo Humano</option>
               </select>
 
+              {/* Filtro País de Origen */}
               <select
-                value={contactTypeFilter}
-                onChange={(e) => { setContactTypeFilter(e.target.value); setCurrentPage(1); }}
+                value={originCountryFilter}
+                onChange={(e) => { setOriginCountryFilter(e.target.value); setCurrentPage(1); }}
                 className="px-3.5 py-2 rounded-xl bg-[#0d0d0d] border border-[#b58e45]/30 text-sm text-[#f4f1ea] outline-none font-medium"
               >
-                <option value="all">Tipos (Todos)</option>
-                <option value="client">Cliente Autorizado</option>
-                <option value="non_client">No Cliente</option>
+                <option value="all">Origen (Todos)</option>
+                {VALID_COUNTRIES.map((c) => (
+                  <option key={`orig-${c}`} value={c}>{c}</option>
+                ))}
               </select>
 
+              {/* Filtro País de Destino */}
               <select
-                value={routeFilter}
-                onChange={(e) => { setRouteFilter(e.target.value); setCurrentPage(1); }}
-                className="px-3.5 py-2 rounded-xl bg-[#0d0d0d] border border-[#b58e45]/30 text-sm text-[#f4f1ea] outline-none font-medium max-w-[190px]"
+                value={destCountryFilter}
+                onChange={(e) => { setDestCountryFilter(e.target.value); setCurrentPage(1); }}
+                className="px-3.5 py-2 rounded-xl bg-[#0d0d0d] border border-[#b58e45]/30 text-sm text-[#f4f1ea] outline-none font-medium"
               >
-                <option value="all">Rutas (Todas)</option>
-                {uniqueRoutes.map((r) => (
-                  <option key={r} value={r}>{r}</option>
+                <option value="all">Destino (Todos)</option>
+                {VALID_COUNTRIES.map((c) => (
+                  <option key={`dest-${c}`} value={c}>{c}</option>
                 ))}
               </select>
 
@@ -508,7 +529,6 @@ export default function AdminCrmPage() {
               <thead className="bg-[#0d0d0d] border-b border-[#b58e45]/20 text-[#f4f1ea]/70 uppercase text-xs font-bold tracking-wider">
                 <tr>
                   <th className="py-4 px-5">Contacto</th>
-                  <th className="py-4 px-5">Directorio</th>
                   <th className="py-4 px-5">Ruta Habitual</th>
                   <th className="py-4 px-5 text-center">Frecuencia</th>
                   <th className="py-4 px-5 text-right">Volumen USD</th>
@@ -519,14 +539,14 @@ export default function AdminCrmPage() {
               <tbody className="divide-y divide-[#b58e45]/10 bg-[#121212]/40">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-sm text-[#f4f1ea]/40">
+                    <td colSpan={6} className="py-10 text-center text-sm text-[#f4f1ea]/40">
                       Cargando datos de Supabase...
                     </td>
                   </tr>
                 ) : consolidatedClients.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-sm text-[#f4f1ea]/40">
-                      No se encontraron clientes con los filtros aplicados.
+                    <td colSpan={6} className="py-10 text-center text-sm text-[#f4f1ea]/40">
+                      No se encontraron clientes autorizados con los filtros aplicados.
                     </td>
                   </tr>
                 ) : (
@@ -543,17 +563,6 @@ export default function AdminCrmPage() {
                         <td className="py-4 px-5 font-medium">
                           <div className="font-bold text-base text-[#f4f1ea]">{client.full_name || 'Sin Nombre'}</div>
                           <div className="text-xs text-[#f4f1ea]/60 font-semibold mt-0.5">+{client.phone}</div>
-                        </td>
-                        <td className="py-4 px-5">
-                          <span
-                            className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                              client.contact_type === 'client'
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/30'
-                            }`}
-                          >
-                            {client.contact_type === 'client' ? 'Cliente' : 'No Cliente'}
-                          </span>
                         </td>
                         <td className="py-4 px-5 text-sm text-[#f4f1ea]/90 font-medium">
                           {client.preferred_origin_country || 'N/A'} ➔ {client.preferred_dest_country || 'N/A'}
@@ -631,18 +640,19 @@ export default function AdminCrmPage() {
                   <th className="py-4 px-5 text-right">Recibe</th>
                   <th className="py-4 px-5 text-right">Tasa Aplicada</th>
                   <th className="py-4 px-5 text-right">Ref. USD</th>
+                  <th className="py-4 px-5 text-center">Estado</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#b58e45]/10 bg-[#121212]/40">
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-sm text-[#f4f1ea]/40">
+                    <td colSpan={8} className="py-10 text-center text-sm text-[#f4f1ea]/40">
                       Cargando historial...
                     </td>
                   </tr>
                 ) : paginatedTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-sm text-[#f4f1ea]/40">
+                    <td colSpan={8} className="py-10 text-center text-sm text-[#f4f1ea]/40">
                       No hay transacciones que coincidan con la búsqueda.
                     </td>
                   </tr>
@@ -671,6 +681,17 @@ export default function AdminCrmPage() {
                       </td>
                       <td className="py-4 px-5 text-right font-black text-sm text-[#b58e45]">
                         ${(tx.usd_equivalent || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="py-4 px-5 text-center">
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                            tx.status && tx.status.toLowerCase() !== 'quoted'
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                              : 'bg-zinc-500/10 text-zinc-400 border border-zinc-500/30'
+                          }`}
+                        >
+                          {tx.status && tx.status.toLowerCase() !== 'quoted' ? 'Confirmada' : 'Cotizada'}
+                        </span>
                       </td>
                     </tr>
                   ))
