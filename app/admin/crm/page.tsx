@@ -30,6 +30,14 @@ interface Client {
   created_at: string;
 }
 
+interface CurrencyRate {
+  id?: number;
+  country: string;
+  currency_code: string;
+  rate_to_usdt: number;
+  updated_at?: string;
+}
+
 const VALID_COUNTRIES = [
   'Perú',
   'Colombia',
@@ -39,6 +47,144 @@ const VALID_COUNTRIES = [
   'Brasil',
   'Venezuela'
 ];
+
+function CurrencyRatesManager() {
+  const [rates, setRates] = useState<CurrencyRate[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
+  const fetchRates = async () => {
+    setLoading(true);
+    setErrorMessage('');
+    try {
+      const { data, error } = await supabase
+        .from('currency_rates')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setRates(data as CurrencyRate[]);
+      }
+    } catch (err: any) {
+      console.error('Error cargando currency_rates:', err);
+      setErrorMessage('No se pudieron cargar las paridades USDT.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRates();
+  }, []);
+
+  const handleRateChange = (country: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setRates((prev) =>
+      prev.map((r) => (r.country === country ? { ...r, rate_to_usdt: numValue } : r))
+    );
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveSuccess(false);
+    setErrorMessage('');
+
+    try {
+      const nowIso = new Date().toISOString();
+      const updates = rates.map((r) => ({
+        country: r.country,
+        currency_code: r.currency_code,
+        rate_to_usdt: r.rate_to_usdt,
+        updated_at: nowIso,
+      }));
+
+      const { error } = await supabase
+        .from('currency_rates')
+        .upsert(updates, { onConflict: 'country' });
+
+      if (error) throw error;
+
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      console.error('Error guardando currency_rates:', err);
+      setErrorMessage('Hubo un error al guardar las paridades.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const editableCurrencies = rates.filter(
+    (r) => !['Estados Unidos', 'Ecuador'].includes(r.country)
+  );
+
+  return (
+    <section className="p-5 sm:p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 space-y-4 shadow-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
+            <h3 className="text-sm font-black uppercase tracking-wider text-[#f4f1ea]">
+              Paridades USDT del Día (P2P Referencial)
+            </h3>
+          </div>
+          <p className="text-xs text-[#f4f1ea]/60 mt-0.5 font-medium">
+            Tasa operativa en moneda local para calcular Ref. USD universal sobre el capital recibido.
+          </p>
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving || loading}
+          className={`px-4 py-2 text-xs font-black rounded-xl transition-all cursor-pointer shadow-md ${
+            saveSuccess
+              ? 'bg-emerald-500 text-[#0d0d0d]'
+              : 'bg-[#b58e45] hover:bg-[#9d7938] text-[#0d0d0d] disabled:opacity-40 disabled:pointer-events-none'
+          }`}
+        >
+          {saving ? 'Guardando...' : saveSuccess ? '✓ Paridades Actualizadas' : 'Guardar Paridades'}
+        </button>
+      </div>
+
+      {errorMessage && (
+        <div className="text-xs text-rose-400 bg-rose-950/30 border border-rose-800/40 p-2.5 rounded-xl">
+          {errorMessage}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="py-4 text-center text-xs text-[#f4f1ea]/40">Cargando paridades configuradas...</div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          {editableCurrencies.map((item) => (
+            <div
+              key={item.country}
+              className="bg-[#0d0d0d] border border-[#b58e45]/20 hover:border-[#b58e45]/40 rounded-xl p-3 flex flex-col justify-between transition-colors"
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-[#f4f1ea]">{item.country}</span>
+                <span className="text-[10px] font-mono font-bold text-[#b58e45] bg-[#b58e45]/10 px-1.5 py-0.5 rounded border border-[#b58e45]/30">
+                  {item.currency_code}
+                </span>
+              </div>
+              <input
+                type="number"
+                step="any"
+                value={item.rate_to_usdt || ''}
+                onChange={(e) => handleRateChange(item.country, e.target.value)}
+                className="w-full bg-[#121212] border border-[#b58e45]/30 focus:border-[#b58e45] focus:outline-none text-[#f4f1ea] text-xs font-mono font-bold rounded-lg px-2.5 py-1.5 transition-colors"
+                placeholder="0.00"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
 
 export default function AdminCrmPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -323,6 +469,9 @@ export default function AdminCrmPage() {
             </button>
           </div>
         </header>
+
+        {/* GESTOR DE PARIDADES USDT (P2P REFERENCIAL) */}
+        <CurrencyRatesManager />
 
         {/* BARRA DE FILTRO TEMPORAL GLOBAL */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-[#121212] p-4 rounded-2xl border border-[#b58e45]/20">
