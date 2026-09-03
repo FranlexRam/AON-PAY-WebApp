@@ -209,14 +209,13 @@ export default function AdminCrmPage() {
   const [tempEnd, setTempEnd] = useState<string>('');
   const calendarRef = useRef<HTMLDivElement>(null);
 
-  // Toggle para distribución de rutas ('confirmed' | 'quoted')
+  // Toggle de distribución de rutas
   const [routeViewMode, setRouteViewMode] = useState<'confirmed' | 'quoted'>('confirmed');
 
   // Paginación
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
 
-  // Cerrar calendario al hacer clic fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
@@ -273,7 +272,6 @@ export default function AdminCrmPage() {
     }
   };
 
-  // Función utilitaria para obtener fecha ISO en formato YYYY-MM-DD según zona horaria de Caracas (GMT-4)
   const getCaracasDateString = (dateObj: Date): string => {
     return new Intl.DateTimeFormat('en-CA', {
       timeZone: 'America/Caracas',
@@ -283,7 +281,6 @@ export default function AdminCrmPage() {
     }).format(dateObj);
   };
 
-  // Filtrado temporal estricto y saneamiento de transacciones
   const sanitizedDateFilteredTransactions = useMemo(() => {
     const now = new Date();
     const todayCaracas = getCaracasDateString(now);
@@ -321,7 +318,6 @@ export default function AdminCrmPage() {
     });
   }, [transactions, dateRangeFilter, customStartDate, customEndDate]);
 
-  // Manejadores del Calendario Flotante
   const handleCalendarDayClick = (dayStr: string) => {
     if (!tempStart || (tempStart && tempEnd)) {
       setTempStart(dayStr);
@@ -346,13 +342,27 @@ export default function AdminCrmPage() {
     }
   };
 
-  const setShortcutRange = (daysBack: number) => {
+  const setShortcutRange = (type: 'yesterday' | '7d' | '15d' | 'this_month' | 'last_month') => {
     const now = new Date();
-    const target = new Date();
-    target.setDate(now.getDate() - daysBack);
+    let start = new Date();
+    let end = new Date();
 
-    const startStr = getCaracasDateString(target);
-    const endStr = getCaracasDateString(now);
+    if (type === 'yesterday') {
+      start.setDate(now.getDate() - 1);
+      end.setDate(now.getDate() - 1);
+    } else if (type === '7d') {
+      start.setDate(now.getDate() - 7);
+    } else if (type === '15d') {
+      start.setDate(now.getDate() - 15);
+    } else if (type === 'this_month') {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (type === 'last_month') {
+      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      end = new Date(now.getFullYear(), now.getMonth(), 0);
+    }
+
+    const startStr = getCaracasDateString(start);
+    const endStr = getCaracasDateString(end);
 
     setTempStart(startStr);
     setTempEnd(endStr);
@@ -363,7 +373,6 @@ export default function AdminCrmPage() {
     setIsCalendarOpen(false);
   };
 
-  // Generador de días para el calendario
   const calendarDays = useMemo(() => {
     const year = calendarViewDate.getFullYear();
     const month = calendarViewDate.getMonth();
@@ -373,12 +382,10 @@ export default function AdminCrmPage() {
 
     const days: { dateStr: string; dayNum: number; isCurrentMonth: boolean }[] = [];
 
-    // Relleno de días vacíos anteriores
     for (let i = 0; i < firstDayIndex; i++) {
       days.push({ dateStr: '', dayNum: 0, isCurrentMonth: false });
     }
 
-    // Días del mes
     for (let d = 1; d <= totalDaysInMonth; d++) {
       const monthStr = String(month + 1).padStart(2, '0');
       const dayStr = String(d).padStart(2, '0');
@@ -456,7 +463,6 @@ export default function AdminCrmPage() {
     return (confirmedTransactions.length / sanitizedDateFilteredTransactions.length) * 100;
   }, [sanitizedDateFilteredTransactions, confirmedTransactions]);
 
-  // Distribución de Rutas con Toggle Dinámico
   const routeDistribution = useMemo(() => {
     const targetSource = routeViewMode === 'confirmed' ? confirmedTransactions : sanitizedDateFilteredTransactions;
     const totalOps = targetSource.length;
@@ -476,7 +482,6 @@ export default function AdminCrmPage() {
       .sort((a, b) => b.count - a.count);
   }, [sanitizedDateFilteredTransactions, confirmedTransactions, routeViewMode]);
 
-  // Picos
   const peakStats = useMemo(() => {
     const daysMap: Record<string, number> = {
       'Lunes': 0, 'Martes': 0, 'Miércoles': 0, 'Jueves': 0, 'Viernes': 0, 'Sábado': 0, 'Domingo': 0
@@ -510,7 +515,6 @@ export default function AdminCrmPage() {
     };
   }, [sanitizedDateFilteredTransactions]);
 
-  // Directorio de Clientes
   const consolidatedClients = useMemo(() => {
     const activeBaseTransactions = filterOnlyConfirmed ? confirmedTransactions : sanitizedDateFilteredTransactions;
 
@@ -544,7 +548,6 @@ export default function AdminCrmPage() {
       .sort((a, b) => b.totalVolume - a.totalVolume);
   }, [clients, sanitizedDateFilteredTransactions, confirmedTransactions, filterOnlyConfirmed, searchTerm, statusFilter, originCountryFilter, destCountryFilter]);
 
-  // Historial Filtrado
   const filteredTransactions = useMemo(() => {
     return sanitizedDateFilteredTransactions.filter((tx) => {
       if (filterOnlyConfirmed && (!tx.status || tx.status.toLowerCase() === 'quoted')) return false;
@@ -560,7 +563,6 @@ export default function AdminCrmPage() {
     });
   }, [sanitizedDateFilteredTransactions, filterOnlyConfirmed, selectedClientPhone, searchTerm, originCountryFilter, destCountryFilter]);
 
-  // Paginación
   const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
   const paginatedTransactions = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -599,10 +601,10 @@ export default function AdminCrmPage() {
           </div>
         </header>
 
-        {/* GESTOR DE PARIDADES USDT (P2P REFERENCIAL) */}
+        {/* GESTOR DE PARIDADES USDT */}
         <CurrencyRatesManager />
 
-        {/* BARRA DE FILTRO TEMPORAL GLOBAL Y BOTÓN CON CALENDARIO POPOVER */}
+        {/* BARRA DE FILTRO TEMPORAL GLOBAL Y DATEPICKER POPOVER MEJORADO */}
         <div className="relative flex flex-wrap items-center justify-between gap-4 bg-[#121212] p-4 rounded-2xl border border-[#b58e45]/20">
           <div className="text-sm font-bold text-[#f4f1ea]/80 flex items-center gap-2">
             <span className="text-base">📅</span>
@@ -633,7 +635,7 @@ export default function AdminCrmPage() {
               </button>
             ))}
 
-            {/* Botón Personalizado con Popover */}
+            {/* BOTÓN CON POPOVER FLOTANTE REDISEÑADO */}
             <div className="relative">
               <button
                 onClick={() => {
@@ -658,121 +660,141 @@ export default function AdminCrmPage() {
                 <span className="text-[10px] opacity-70">▼</span>
               </button>
 
-              {/* CALENDARIO FLOTANTE (POPOVER) */}
+              {/* CALENDARIO FLOTANTE EXPANDIDO CON BARRA LATERAL DE ATAJOS */}
               {isCalendarOpen && (
                 <div
                   ref={calendarRef}
-                  className="absolute right-0 top-full mt-3 z-50 w-80 sm:w-96 bg-[#121212] border border-[#b58e45]/40 rounded-2xl p-4 shadow-[0_10px_35px_rgba(0,0,0,0.8)] backdrop-blur-md"
+                  className="absolute right-0 top-full mt-3 z-50 w-[440px] max-w-[95vw] bg-[#121212] border border-[#b58e45]/40 rounded-2xl p-4 shadow-[0_15px_50px_rgba(0,0,0,0.85)] backdrop-blur-xl flex flex-col gap-3"
                 >
-                  {/* Encabezado del mes */}
-                  <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#b58e45]/20">
-                    <button
-                      onClick={() => {
-                        const d = new Date(calendarViewDate);
-                        d.setMonth(d.getMonth() - 1);
-                        setCalendarViewDate(d);
-                      }}
-                      className="p-1 text-[#f4f1ea]/60 hover:text-[#f4f1ea] font-bold text-sm"
-                    >
-                      ◀
-                    </button>
-                    <span className="font-bold text-sm text-[#f4f1ea] capitalize">
-                      {calendarViewDate.toLocaleString('es-VE', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const d = new Date(calendarViewDate);
-                        d.setMonth(d.getMonth() + 1);
-                        setCalendarViewDate(d);
-                      }}
-                      className="p-1 text-[#f4f1ea]/60 hover:text-[#f4f1ea] font-bold text-sm"
-                    >
-                      ▶
-                    </button>
-                  </div>
-
-                  {/* Nombres de los días */}
-                  <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase text-[#f4f1ea]/40 mb-1">
-                    {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'].map((d) => (
-                      <span key={d}>{d}</span>
-                    ))}
-                  </div>
-
-                  {/* Matriz de Días */}
-                  <div className="grid grid-cols-7 gap-1">
-                    {calendarDays.map((cd, idx) => {
-                      if (!cd.isCurrentMonth) {
-                        return <div key={`empty-${idx}`} className="h-8" />;
-                      }
-
-                      const isSelectedStart = tempStart === cd.dateStr;
-                      const isSelectedEnd = tempEnd === cd.dateStr;
-                      const isInRange =
-                        tempStart && tempEnd && cd.dateStr >= tempStart && cd.dateStr <= tempEnd;
-
-                      return (
+                  <div className="flex gap-4">
+                    {/* Barra lateral de accesos rápidos */}
+                    <div className="hidden sm:flex flex-col gap-1.5 w-32 border-r border-[#b58e45]/20 pr-3">
+                      <span className="text-[10px] font-black uppercase text-[#f4f1ea]/40 tracking-wider mb-1">
+                        Atajos
+                      </span>
+                      {[
+                        { label: 'Ayer', id: 'yesterday' as const },
+                        { label: 'Últimos 7 días', id: '7d' as const },
+                        { label: 'Últimos 15 días', id: '15d' as const },
+                        { label: 'Este mes', id: 'this_month' as const },
+                        { label: 'Mes anterior', id: 'last_month' as const },
+                      ].map((item) => (
                         <button
-                          key={cd.dateStr}
-                          onClick={() => handleCalendarDayClick(cd.dateStr)}
-                          className={`h-8 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            isSelectedStart || isSelectedEnd
-                              ? 'bg-[#b58e45] text-[#121212] scale-105 shadow-sm font-black'
-                              : isInRange
-                              ? 'bg-[#b58e45]/20 text-[#f4f1ea]'
-                              : 'text-[#f4f1ea]/70 hover:bg-[#0d0d0d] hover:text-[#f4f1ea]'
-                          }`}
+                          key={item.id}
+                          onClick={() => setShortcutRange(item.id)}
+                          className="text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#f4f1ea]/70 hover:text-[#f4f1ea] hover:bg-[#b58e45]/15 transition-colors cursor-pointer"
                         >
-                          {cd.dayNum}
+                          {item.label}
                         </button>
-                      );
-                    })}
+                      ))}
+                    </div>
+
+                    {/* Contenedor del mes interactivo */}
+                    <div className="flex-1">
+                      {/* Cabecera del mes y controles */}
+                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#b58e45]/15">
+                        <button
+                          onClick={() => {
+                            const d = new Date(calendarViewDate);
+                            d.setMonth(d.getMonth() - 1);
+                            setCalendarViewDate(d);
+                          }}
+                          className="p-1.5 rounded-lg hover:bg-[#0d0d0d] text-[#f4f1ea]/60 hover:text-[#f4f1ea] font-bold text-xs"
+                        >
+                          ◀
+                        </button>
+                        <span className="font-extrabold text-sm text-[#f4f1ea] capitalize tracking-wide">
+                          {calendarViewDate.toLocaleString('es-VE', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const d = new Date(calendarViewDate);
+                            d.setMonth(d.getMonth() + 1);
+                            setCalendarViewDate(d);
+                          }}
+                          className="p-1.5 rounded-lg hover:bg-[#0d0d0d] text-[#f4f1ea]/60 hover:text-[#f4f1ea] font-bold text-xs"
+                        >
+                          ▶
+                        </button>
+                      </div>
+
+                      {/* Nombres de los días */}
+                      <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase text-[#f4f1ea]/50 mb-1">
+                        {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'].map((d) => (
+                          <span key={d} className="py-1">{d}</span>
+                        ))}
+                      </div>
+
+                      {/* Cuadrícula de días con continuidad de rango */}
+                      <div className="grid grid-cols-7 gap-y-1">
+                        {calendarDays.map((cd, idx) => {
+                          if (!cd.isCurrentMonth) {
+                            return <div key={`empty-${idx}`} className="h-9" />;
+                          }
+
+                          const isStart = tempStart === cd.dateStr;
+                          const isEnd = tempEnd === cd.dateStr;
+                          const isInRange =
+                            tempStart && tempEnd && cd.dateStr > tempStart && cd.dateStr < tempEnd;
+
+                          return (
+                            <div
+                              key={cd.dateStr}
+                              className={`h-9 flex items-center justify-center relative ${
+                                isInRange ? 'bg-[#b58e45]/15' : ''
+                              } ${isStart && tempEnd ? 'bg-gradient-to-r from-transparent to-[#b58e45]/15 rounded-l-lg' : ''} ${
+                                isEnd ? 'bg-gradient-to-l from-transparent to-[#b58e45]/15 rounded-r-lg' : ''
+                              }`}
+                            >
+                              <button
+                                onClick={() => handleCalendarDayClick(cd.dateStr)}
+                                className={`h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                                  isStart || isEnd
+                                    ? 'bg-[#b58e45] text-[#121212] font-black shadow-md scale-105'
+                                    : 'text-[#f4f1ea]/80 hover:bg-[#0d0d0d] hover:text-[#f4f1ea]'
+                                }`}
+                              >
+                                {cd.dayNum}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Atajos Rápidos */}
-                  <div className="flex flex-wrap gap-1.5 pt-3 mt-3 border-t border-[#b58e45]/20">
-                    <button
-                      onClick={() => setShortcutRange(1)}
-                      className="px-2 py-1 bg-[#0d0d0d] hover:bg-[#b58e45]/20 text-[10px] font-bold text-[#f4f1ea]/70 rounded-lg border border-[#b58e45]/20"
-                    >
-                      Ayer
-                    </button>
-                    <button
-                      onClick={() => setShortcutRange(15)}
-                      className="px-2 py-1 bg-[#0d0d0d] hover:bg-[#b58e45]/20 text-[10px] font-bold text-[#f4f1ea]/70 rounded-lg border border-[#b58e45]/20"
-                    >
-                      Últimos 15 días
-                    </button>
-                    <button
-                      onClick={() => setShortcutRange(60)}
-                      className="px-2 py-1 bg-[#0d0d0d] hover:bg-[#b58e45]/20 text-[10px] font-bold text-[#f4f1ea]/70 rounded-lg border border-[#b58e45]/20"
-                    >
-                      Últimos 60 días
-                    </button>
-                  </div>
-
-                  {/* Acciones */}
-                  <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-[#b58e45]/20">
-                    <button
-                      onClick={() => {
-                        setTempStart('');
-                        setTempEnd('');
-                      }}
-                      className="text-xs text-rose-400 hover:underline font-bold"
-                    >
-                      Limpiar
-                    </button>
+                  {/* Pie de acciones y rango temporal */}
+                  <div className="flex items-center justify-between pt-3 border-t border-[#b58e45]/20 text-xs">
+                    <div className="text-[11px] text-[#f4f1ea]/60 font-mono">
+                      {tempStart ? (
+                        <span>
+                          {tempStart} {tempEnd ? `➔ ${tempEnd}` : '(elige fin)'}
+                        </span>
+                      ) : (
+                        <span>Selecciona rango</span>
+                      )}
+                    </div>
 
                     <div className="flex items-center gap-2">
                       <button
+                        onClick={() => {
+                          setTempStart('');
+                          setTempEnd('');
+                        }}
+                        className="px-2.5 py-1 text-rose-400 hover:text-rose-300 font-bold"
+                      >
+                        Limpiar
+                      </button>
+                      <button
                         onClick={() => setIsCalendarOpen(false)}
-                        className="px-3 py-1.5 text-xs text-[#f4f1ea]/60 hover:text-[#f4f1ea] font-bold"
+                        className="px-2.5 py-1 text-[#f4f1ea]/60 hover:text-[#f4f1ea] font-medium"
                       >
                         Cancelar
                       </button>
                       <button
                         onClick={applyCustomDateRange}
                         disabled={!tempStart}
-                        className="px-4 py-1.5 bg-[#b58e45] hover:bg-[#9d7938] text-[#0d0d0d] text-xs font-black rounded-xl transition-all disabled:opacity-40"
+                        className="px-4 py-1.5 bg-[#b58e45] hover:bg-[#9d7938] text-[#0d0d0d] font-black rounded-xl transition-all disabled:opacity-40 shadow-sm"
                       >
                         Aplicar
                       </button>
@@ -794,7 +816,6 @@ export default function AdminCrmPage() {
             <span className="text-xs text-[#f4f1ea]/50 font-medium">Equivalente global USD</span>
           </div>
 
-          {/* Tarjeta interactiva de Volumen Confirmado */}
           <div
             onClick={() => {
               setFilterOnlyConfirmed(!filterOnlyConfirmed);
@@ -836,7 +857,6 @@ export default function AdminCrmPage() {
             <span className="text-xs text-[#b58e45] font-bold">{mostLoyalClient.count} cotizaciones</span>
           </div>
 
-          {/* Cliente Top calculado estrictamente por volumen cerrado */}
           <div className="p-5 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-lg">
             <span className="text-xs uppercase font-bold text-[#f4f1ea]/60 tracking-wider">Cliente Top (Cerrado)</span>
             <div className="text-sm font-bold text-[#f4f1ea] truncate my-2" title={topVolumeClient.name}>
@@ -861,7 +881,7 @@ export default function AdminCrmPage() {
           </div>
         </section>
 
-        {/* DISTRIBUCIÓN DE RUTAS (CON TOGGLE CONFIRMADAS VS COTIZADAS) Y PICOS */}
+        {/* DISTRIBUCIÓN DE RUTAS Y PICOS */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 space-y-4 shadow-lg">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -874,7 +894,6 @@ export default function AdminCrmPage() {
                 </p>
               </div>
 
-              {/* Mini Toggle Confirmadas vs Cotizadas */}
               <div className="flex items-center gap-1 bg-[#0d0d0d] p-1 rounded-xl border border-[#b58e45]/30">
                 <button
                   onClick={() => setRouteViewMode('confirmed')}
@@ -970,7 +989,6 @@ export default function AdminCrmPage() {
               <p className="text-sm text-[#f4f1ea]/60">Haz clic en cualquier cliente para filtrar su historial específico abajo</p>
             </div>
 
-            {/* Filtros */}
             <div className="flex flex-wrap items-center gap-3">
               <input
                 type="text"
@@ -1106,7 +1124,7 @@ export default function AdminCrmPage() {
           </div>
         </section>
 
-        {/* HISTORIAL TOTAL DE COTIZACIONES CON PAGINACIÓN */}
+        {/* AUDITORÍA DE TRANSACCIONES */}
         <section className="p-6 sm:p-7 rounded-2xl bg-[#121212] border border-[#b58e45]/20 space-y-5 shadow-lg">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
@@ -1127,7 +1145,6 @@ export default function AdminCrmPage() {
               )}
             </div>
 
-            {/* Selector de Tamaño de Página */}
             <div className="flex items-center gap-2 text-sm text-[#f4f1ea]/80 font-medium">
               <span>Mostrar:</span>
               <select
@@ -1215,7 +1232,6 @@ export default function AdminCrmPage() {
             </table>
           </div>
 
-          {/* Controles de Paginación */}
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-5 border-t border-[#b58e45]/15 text-sm text-[#f4f1ea]/70 font-medium">
             <span>
               Página <strong className="text-[#f4f1ea] font-bold">{currentPage}</strong> de <strong className="text-[#f4f1ea] font-bold">{totalPages}</strong>
