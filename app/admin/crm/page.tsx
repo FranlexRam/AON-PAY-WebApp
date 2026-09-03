@@ -281,6 +281,17 @@ export default function AdminCrmPage() {
     }).format(dateObj);
   };
 
+  // Mapa optimizado teléfono -> nombre completo del cliente
+  const clientMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    clients.forEach((c) => {
+      if (c.phone && c.full_name) {
+        map[c.phone] = c.full_name;
+      }
+    });
+    return map;
+  }, [clients]);
+
   const sanitizedDateFilteredTransactions = useMemo(() => {
     const now = new Date();
     const todayCaracas = getCaracasDateString(now);
@@ -553,15 +564,17 @@ export default function AdminCrmPage() {
       if (filterOnlyConfirmed && (!tx.status || tx.status.toLowerCase() === 'quoted')) return false;
       if (selectedClientPhone && tx.client_phone !== selectedClientPhone) return false;
       if (searchTerm) {
+        const clientName = (clientMap[tx.client_phone] || '').toLowerCase();
         const matchesPhone = tx.client_phone.includes(searchTerm);
+        const matchesName = clientName.includes(searchTerm.toLowerCase());
         const matchesRoute = `${tx.origin_country} ${tx.dest_country}`.toLowerCase().includes(searchTerm.toLowerCase());
-        if (!matchesPhone && !matchesRoute) return false;
+        if (!matchesPhone && !matchesName && !matchesRoute) return false;
       }
       if (originCountryFilter !== 'all' && tx.origin_country !== originCountryFilter) return false;
       if (destCountryFilter !== 'all' && tx.dest_country !== destCountryFilter) return false;
       return true;
     });
-  }, [sanitizedDateFilteredTransactions, filterOnlyConfirmed, selectedClientPhone, searchTerm, originCountryFilter, destCountryFilter]);
+  }, [sanitizedDateFilteredTransactions, filterOnlyConfirmed, selectedClientPhone, searchTerm, clientMap, originCountryFilter, destCountryFilter]);
 
   const totalPages = Math.ceil(filteredTransactions.length / pageSize) || 1;
   const paginatedTransactions = useMemo(() => {
@@ -635,7 +648,7 @@ export default function AdminCrmPage() {
               </button>
             ))}
 
-            {/* BOTÓN CON POPOVER FLOTANTE REDISEÑADO */}
+            {/* BOTÓN CON POPOVER FLOTANTE */}
             <div className="relative">
               <button
                 onClick={() => {
@@ -1140,7 +1153,7 @@ export default function AdminCrmPage() {
               </div>
               {selectedClientPhone && (
                 <p className="text-sm text-[#b58e45] font-bold mt-1">
-                  Mostrando únicamente transacciones de: +{selectedClientPhone}
+                  Mostrando únicamente transacciones de: {clientMap[selectedClientPhone] ? `${clientMap[selectedClientPhone]} (+${selectedClientPhone})` : `+${selectedClientPhone}`}
                 </p>
               )}
             </div>
@@ -1198,7 +1211,14 @@ export default function AdminCrmPage() {
                           timeStyle: 'short'
                         })}
                       </td>
-                      <td className="py-4 px-5 font-bold text-sm text-[#f4f1ea]">+{tx.client_phone}</td>
+                      <td className="py-4 px-5 font-medium">
+                        <div className="font-bold text-sm text-[#f4f1ea]">
+                          {clientMap[tx.client_phone] || 'Sin Nombre'}
+                        </div>
+                        <div className="text-xs text-[#f4f1ea]/60 font-semibold mt-0.5">
+                          +{tx.client_phone}
+                        </div>
+                      </td>
                       <td className="py-4 px-5 text-sm text-[#f4f1ea]/90 font-medium">
                         {tx.origin_country} ➔ {tx.dest_country}
                       </td>
