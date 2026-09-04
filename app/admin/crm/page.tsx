@@ -212,9 +212,9 @@ export default function AdminCrmPage() {
   // Toggle de distribución de rutas
   const [routeViewMode, setRouteViewMode] = useState<'confirmed' | 'quoted'>('confirmed');
 
-  // Paginación
+  // Paginación: 10 por defecto
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize, setPageSize] = useState<number>(25);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -291,6 +291,26 @@ export default function AdminCrmPage() {
     });
     return map;
   }, [clients]);
+
+  // Detector de filtros activos en la barra de clientes
+  const hasActiveClientFilters = useMemo(() => {
+    return (
+      searchTerm.trim() !== '' ||
+      statusFilter !== 'all' ||
+      originCountryFilter !== 'all' ||
+      destCountryFilter !== 'all' ||
+      selectedClientPhone !== null
+    );
+  }, [searchTerm, statusFilter, originCountryFilter, destCountryFilter, selectedClientPhone]);
+
+  const handleClearClientFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setOriginCountryFilter('all');
+    setDestCountryFilter('all');
+    setSelectedClientPhone(null);
+    setCurrentPage(1);
+  };
 
   const sanitizedDateFilteredTransactions = useMemo(() => {
     const now = new Date();
@@ -526,6 +546,7 @@ export default function AdminCrmPage() {
     };
   }, [sanitizedDateFilteredTransactions]);
 
+  // Directorio de clientes con filtro de búsqueda tolerante a prefijos '+' y códigos de país
   const consolidatedClients = useMemo(() => {
     const activeBaseTransactions = filterOnlyConfirmed ? confirmedTransactions : sanitizedDateFilteredTransactions;
 
@@ -538,6 +559,8 @@ export default function AdminCrmPage() {
       txMap[tx.client_phone].totalUsd += tx.usd_equivalent || 0;
     });
 
+    const cleanSearch = searchTerm.trim().toLowerCase();
+
     return clients
       .filter((c) => c.contact_type === 'client')
       .map((c) => ({
@@ -547,9 +570,19 @@ export default function AdminCrmPage() {
       }))
       .filter((c) => {
         if (filterOnlyConfirmed && c.txCount === 0) return false;
-        const matchesSearch =
-          c.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (c.full_name && c.full_name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        let matchesSearch = true;
+        if (cleanSearch) {
+          const rawPhone = (c.phone || '').toLowerCase();
+          const prefixedPhone = `+${rawPhone}`;
+          const clientName = (c.full_name || '').toLowerCase();
+
+          matchesSearch =
+            rawPhone.includes(cleanSearch) ||
+            prefixedPhone.includes(cleanSearch) ||
+            clientName.includes(cleanSearch);
+        }
+
         const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
         const matchesOrigin = originCountryFilter === 'all' || (c.preferred_origin_country && c.preferred_origin_country.includes(originCountryFilter));
         const matchesDest = destCountryFilter === 'all' || (c.preferred_dest_country && c.preferred_dest_country.includes(destCountryFilter));
@@ -559,17 +592,27 @@ export default function AdminCrmPage() {
       .sort((a, b) => b.totalVolume - a.totalVolume);
   }, [clients, sanitizedDateFilteredTransactions, confirmedTransactions, filterOnlyConfirmed, searchTerm, statusFilter, originCountryFilter, destCountryFilter]);
 
+  // Historial con filtro tolerante a '+' y códigos de área
   const filteredTransactions = useMemo(() => {
+    const cleanSearch = searchTerm.trim().toLowerCase();
+
     return sanitizedDateFilteredTransactions.filter((tx) => {
       if (filterOnlyConfirmed && (!tx.status || tx.status.toLowerCase() === 'quoted')) return false;
       if (selectedClientPhone && tx.client_phone !== selectedClientPhone) return false;
-      if (searchTerm) {
+
+      if (cleanSearch) {
         const clientName = (clientMap[tx.client_phone] || '').toLowerCase();
-        const matchesPhone = tx.client_phone.includes(searchTerm);
-        const matchesName = clientName.includes(searchTerm.toLowerCase());
-        const matchesRoute = `${tx.origin_country} ${tx.dest_country}`.toLowerCase().includes(searchTerm.toLowerCase());
+        const rawPhone = (tx.client_phone || '').toLowerCase();
+        const prefixedPhone = `+${rawPhone}`;
+        const routeStr = `${tx.origin_country} ${tx.dest_country}`.toLowerCase();
+
+        const matchesPhone = rawPhone.includes(cleanSearch) || prefixedPhone.includes(cleanSearch);
+        const matchesName = clientName.includes(cleanSearch);
+        const matchesRoute = routeStr.includes(cleanSearch);
+
         if (!matchesPhone && !matchesName && !matchesRoute) return false;
       }
+
       if (originCountryFilter !== 'all' && tx.origin_country !== originCountryFilter) return false;
       if (destCountryFilter !== 'all' && tx.dest_country !== destCountryFilter) return false;
       return true;
@@ -617,7 +660,7 @@ export default function AdminCrmPage() {
         {/* GESTOR DE PARIDADES USDT */}
         <CurrencyRatesManager />
 
-        {/* BARRA DE FILTRO TEMPORAL GLOBAL Y DATEPICKER POPOVER MEJORADO */}
+        {/* BARRA DE FILTRO TEMPORAL GLOBAL Y DATEPICKER POPOVER */}
         <div className="relative flex flex-wrap items-center justify-between gap-4 bg-[#121212] p-4 rounded-2xl border border-[#b58e45]/20">
           <div className="text-sm font-bold text-[#f4f1ea]/80 flex items-center gap-2">
             <span className="text-base">📅</span>
@@ -680,7 +723,6 @@ export default function AdminCrmPage() {
                   className="absolute right-0 top-full mt-3 z-50 w-[440px] max-w-[95vw] bg-[#121212] border border-[#b58e45]/40 rounded-2xl p-4 shadow-[0_15px_50px_rgba(0,0,0,0.85)] backdrop-blur-xl flex flex-col gap-3"
                 >
                   <div className="flex gap-4">
-                    {/* Barra lateral de accesos rápidos */}
                     <div className="hidden sm:flex flex-col gap-1.5 w-32 border-r border-[#b58e45]/20 pr-3">
                       <span className="text-[10px] font-black uppercase text-[#f4f1ea]/40 tracking-wider mb-1">
                         Atajos
@@ -702,9 +744,7 @@ export default function AdminCrmPage() {
                       ))}
                     </div>
 
-                    {/* Contenedor del mes interactivo */}
                     <div className="flex-1">
-                      {/* Cabecera del mes y controles */}
                       <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#b58e45]/15">
                         <button
                           onClick={() => {
@@ -731,14 +771,12 @@ export default function AdminCrmPage() {
                         </button>
                       </div>
 
-                      {/* Nombres de los días */}
                       <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase text-[#f4f1ea]/50 mb-1">
                         {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'].map((d) => (
                           <span key={d} className="py-1">{d}</span>
                         ))}
                       </div>
 
-                      {/* Cuadrícula de días con continuidad de rango */}
                       <div className="grid grid-cols-7 gap-y-1">
                         {calendarDays.map((cd, idx) => {
                           if (!cd.isCurrentMonth) {
@@ -776,7 +814,6 @@ export default function AdminCrmPage() {
                     </div>
                   </div>
 
-                  {/* Pie de acciones y rango temporal */}
                   <div className="flex items-center justify-between pt-3 border-t border-[#b58e45]/20 text-xs">
                     <div className="text-[11px] text-[#f4f1ea]/60 font-mono">
                       {tempStart ? (
@@ -1007,8 +1044,12 @@ export default function AdminCrmPage() {
                 type="text"
                 placeholder="Buscar por teléfono o nombre..."
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                className="px-4 py-2 rounded-xl bg-[#0d0d0d] border border-[#b58e45]/30 focus:border-[#b58e45] text-sm text-[#f4f1ea] outline-none w-56"
+                onChange={(e) => {
+                  const sanitized = e.target.value.replace(/[^a-zA-Z0-9\s+áéíóúÁÉÍÓÚñÑ]/g, '');
+                  setSearchTerm(sanitized);
+                  setCurrentPage(1);
+                }}
+                className="px-4 py-2 rounded-xl bg-[#0d0d0d] border border-[#b58e45]/30 focus:border-[#b58e45] text-sm text-[#f4f1ea] outline-none w-64"
               />
 
               <select
@@ -1043,21 +1084,24 @@ export default function AdminCrmPage() {
                 ))}
               </select>
 
+              {/* Botón dinámico 'Limpiar Filtros' estilo CRM */}
+              {hasActiveClientFilters && (
+                <button
+                  onClick={handleClearClientFilters}
+                  className="px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  title="Restablecer buscador, origen, destino y modo"
+                >
+                  <span>↺</span>
+                  <span>Limpiar Filtros</span>
+                </button>
+              )}
+
               {filterOnlyConfirmed && (
                 <button
                   onClick={() => setFilterOnlyConfirmed(false)}
                   className="px-3.5 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-bold transition-all cursor-pointer"
                 >
                   Ver Todas las Cotizaciones ✕
-                </button>
-              )}
-
-              {selectedClientPhone && (
-                <button
-                  onClick={() => setSelectedClientPhone(null)}
-                  className="px-3.5 py-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30 text-sm font-bold transition-all cursor-pointer"
-                >
-                  Limpiar Filtro Cliente ✕
                 </button>
               )}
             </div>
