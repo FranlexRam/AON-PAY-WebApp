@@ -54,7 +54,7 @@ function FlagIcon({ country, className = 'w-7 h-5' }: { country: string; classNa
 
   if (hasError) {
     return (
-      <span className={`inline-flex items-center justify-center bg-[#121212] border border-[#b58e45]/40 text-[#b58e45] font-bold text-xs rounded px-1.5 shrink-0 ${className}`}>
+      <span className={`inline-flex items-center justify-center bg-[#121212] border border-[#b58e45]/40 text-[#b58e45] font-bold text-sm rounded px-1.5 shrink-0 ${className}`}>
         {country.substring(0, 2).toUpperCase()}
       </span>
     );
@@ -77,9 +77,9 @@ function AonLogo() {
 
   if (imgError) {
     return (
-      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#b58e45] to-[#8b6d32] p-0.5 shadow-[0_0_24px_rgba(181,142,69,0.35)] shrink-0">
-        <div className="w-full h-full bg-[#121212] rounded-[14px] flex items-center justify-center">
-          <span className="font-black tracking-tighter text-[#b58e45] text-xl font-mono">AON</span>
+      <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-br from-[#b58e45] to-[#8b6d32] p-0.5 shadow-[0_0_30px_rgba(181,142,69,0.4)] shrink-0">
+        <div className="w-full h-full bg-[#121212] rounded-[22px] flex items-center justify-center">
+          <span className="font-black tracking-tighter text-[#b58e45] text-2xl sm:text-3xl font-mono">AON</span>
         </div>
       </div>
     );
@@ -90,7 +90,7 @@ function AonLogo() {
       src="/logo.png"
       alt="AON Pay Logo"
       onError={() => setImgError(true)}
-      className="w-16 h-16 sm:w-20 sm:h-20 object-contain rounded-2xl drop-shadow-[0_0_20px_rgba(181,142,69,0.45)] shrink-0 transition-transform hover:scale-105 duration-300"
+      className="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-3xl drop-shadow-[0_0_25px_rgba(181,142,69,0.55)] shrink-0 transition-transform hover:scale-105 duration-300"
     />
   );
 }
@@ -160,7 +160,6 @@ function CurrencyRatesManager() {
     return parseFloat(normalized) || 0;
   };
 
-  // 1) AJUSTE: Cambio en vivo inmediato reflejado al escribir (onChange)
   const handleRateChange = (country: string, rawVal: string) => {
     let clean = rawVal.replace(/[^0-9.,]/g, '');
     const hasComma = clean.includes(',');
@@ -178,7 +177,7 @@ function CurrencyRatesManager() {
     return rates.filter((r) => {
       const original = originalRates.find((o) => o.country === r.country);
       if (!original) return false;
-      const originalVal = parseLatamToNumber(original.rate_to_usdt);
+      const originalVal = parseLatamToNumber(original?.rate_to_usdt ?? '');
       const currentVal = parseLatamToNumber(r.rate_to_usdt);
       return originalVal !== currentVal;
     });
@@ -282,7 +281,6 @@ function CurrencyRatesManager() {
 
   return (
     <>
-      {/* MODAL 3D RESPONSIVE AMPLIADO */}
       {showConfirmModal && (
         <div 
           onClick={() => setShowConfirmModal(false)}
@@ -290,7 +288,7 @@ function CurrencyRatesManager() {
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#2c2e30] border border-[#b58e45]/40 rounded-3xl p-6 sm:p-8 shadow-[0_25px_70px_rgba(0,0,0,0.95)] max-w-xl w-full space-y-6 animate-in fade-in zoom-in-95 duration-200"
+            className="bg-[#121212] border border-[#b58e45]/40 rounded-3xl p-6 sm:p-8 shadow-[0_25px_70px_rgba(0,0,0,0.95)] max-w-xl w-full space-y-6 animate-in fade-in zoom-in-95 duration-200"
           >
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-[#b58e45]/15 border border-[#b58e45]/40 flex items-center justify-center text-2xl shrink-0">
@@ -306,7 +304,7 @@ function CurrencyRatesManager() {
               </div>
             </div>
 
-            <div className="bg-[#121212]/80 border border-[#b58e45]/20 rounded-2xl p-4 divide-y divide-[#b58e45]/10 max-h-72 overflow-y-auto space-y-2">
+            <div className="bg-[#2c2e30] border border-[#b58e45]/20 rounded-2xl p-4 divide-y divide-[#b58e45]/10 max-h-72 overflow-y-auto space-y-2">
               {pendingChanges.map((change) => {
                 const original = originalRates.find((o) => o.country === change.country);
                 return (
@@ -339,7 +337,7 @@ function CurrencyRatesManager() {
               <button
                 type="button"
                 onClick={() => setShowConfirmModal(false)}
-                className="px-5 py-3.5 rounded-xl bg-[#121212] hover:bg-[#181818] border border-[#b58e45]/25 text-[#f4f1ea]/80 font-bold text-sm transition-colors cursor-pointer"
+                className="px-5 py-3.5 rounded-xl bg-[#2c2e30] hover:bg-[#383a3c] border border-[#b58e45]/25 text-[#f4f1ea]/80 font-bold text-sm transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
@@ -355,8 +353,8 @@ function CurrencyRatesManager() {
         </div>
       )}
 
-      {/* TARJETA DE VALORES USDT */}
-      <section className="p-6 sm:p-7 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 shadow-xl space-y-5">
+      {/* VALORES USDT CON FONDO ORIGINAL #121212 */}
+      <section className="p-6 sm:p-7 rounded-2xl bg-[#121212] border border-[#b58e45]/20 shadow-xl space-y-5">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
@@ -370,7 +368,7 @@ function CurrencyRatesManager() {
             </p>
             
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#121212]/70 border border-[#b58e45]/25 text-xs font-bold text-[#b58e45]">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#2c2e30] border border-[#b58e45]/25 text-xs font-bold text-[#b58e45]">
                 <span>📅</span>
                 <span>{formattedCurrentDate}</span>
               </div>
@@ -387,7 +385,7 @@ function CurrencyRatesManager() {
               <button
                 onClick={handleRevertChanges}
                 type="button"
-                className="px-4 py-2.5 text-xs font-bold text-[#f4f1ea]/80 hover:text-[#f4f1ea] bg-[#121212] hover:bg-[#181818] border border-[#b58e45]/25 rounded-xl transition-all cursor-pointer"
+                className="px-4 py-2.5 text-xs font-bold text-[#f4f1ea]/80 hover:text-[#f4f1ea] bg-[#2c2e30] hover:bg-[#383a3c] border border-[#b58e45]/25 rounded-xl transition-all cursor-pointer"
               >
                 Deshacer
               </button>
@@ -438,14 +436,14 @@ function CurrencyRatesManager() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {editableCurrencies.map((item) => {
               const original = originalRates.find((o) => o.country === item.country);
-              const originalVal = parseLatamToNumber(original?.rate_to_usdt);
+              const originalVal = parseLatamToNumber(original?.rate_to_usdt ?? '');
               const currentVal = parseLatamToNumber(item.rate_to_usdt);
               const isModified = originalVal !== currentVal;
 
               return (
                 <div
                   key={item.country}
-                  className={`bg-[#121212]/80 rounded-2xl p-4 flex flex-col justify-between transition-all border ${
+                  className={`bg-[#2c2e30] rounded-2xl p-4 flex flex-col justify-between transition-all border ${
                     isModified
                       ? 'border-amber-500/80 shadow-[0_0_18px_rgba(245,158,11,0.25)]'
                       : 'border-[#b58e45]/20 hover:border-[#b58e45]/50'
@@ -843,7 +841,6 @@ export default function AdminCrmPage() {
     };
   }, [sanitizedDateFilteredTransactions]);
 
-  // 2) AJUSTE: Filtro por país con coincidencia flexible y tolerante en origen/destino
   const consolidatedClients = useMemo(() => {
     const activeBaseTransactions = filterOnlyConfirmed ? confirmedTransactions : sanitizedDateFilteredTransactions;
 
@@ -856,7 +853,6 @@ export default function AdminCrmPage() {
       txMap[tx.client_phone].totalUsd += tx.usd_equivalent || 0;
     });
 
-    // Mapeo de transacciones por teléfono para validar países de origen/destino operados
     const clientTransactionsMap: Record<string, Transaction[]> = {};
     sanitizedDateFilteredTransactions.forEach((tx) => {
       if (!clientTransactionsMap[tx.client_phone]) {
@@ -891,7 +887,6 @@ export default function AdminCrmPage() {
 
         const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
 
-        // Búsqueda flexible de origen (en preferencias del cliente O en sus transacciones reales)
         let matchesOrigin = true;
         if (originCountryFilter !== 'all') {
           const prefOrigin = (c.preferred_origin_country || '').toLowerCase();
@@ -904,7 +899,6 @@ export default function AdminCrmPage() {
           matchesOrigin = hasPrefMatch || hasTxMatch;
         }
 
-        // Búsqueda flexible de destino (en preferencias del cliente O en sus transacciones reales)
         let matchesDest = true;
         if (destCountryFilter !== 'all') {
           const prefDest = (c.preferred_dest_country || '').toLowerCase();
@@ -956,49 +950,44 @@ export default function AdminCrmPage() {
 
   return (
     <div className="min-h-screen bg-[#121212] text-[#f4f1ea] p-4 sm:p-6 lg:p-8 font-sans antialiased selection:bg-[#b58e45] selection:text-[#121212]">
-      <div className="w-full max-w-[1700px] mx-auto space-y-6">
+      <div className="w-full max-w-[1700px] mx-auto space-y-6 text-base sm:text-lg">
         
-        {/* HEADER CON FONDO #2c2e30 */}
-        <header className="bg-[#2c2e30] border border-[#b58e45]/25 rounded-2xl p-5 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-4 sm:gap-5">
+        {/* HEADER LIMPIO CON LOGOTIPO PROTAGONISTA (FONDO ORIGINAL #121212) */}
+        <header className="flex flex-col lg:flex-row lg:items-center justify-between pb-6 border-b border-[#b58e45]/20 gap-6">
+          <div className="flex items-center gap-5 sm:gap-6">
             <AonLogo />
             <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#f4f1ea]">
-                  AON Pay — BI & CRM Operativo
-                </h1>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-bold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  En Línea
-                </span>
-              </div>
-              <p className="text-sm sm:text-base text-[#f4f1ea]/70 mt-1 font-medium">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-[#f4f1ea] flex items-center gap-3.5">
+                <span className="w-4 h-4 rounded-full bg-[#b58e45] inline-block shadow-[0_0_16px_#b58e45]" />
+                AON Pay — BI & CRM Operativo
+              </h1>
+              <p className="text-base sm:text-lg text-[#f4f1ea]/75 mt-2 font-medium">
                 Control de operaciones, métricas comerciales y atención de clientes
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-start lg:self-center">
+          <div className="flex flex-wrap items-center gap-3.5 self-start lg:self-center">
             <Link
               href="/admin"
-              className="px-4 py-2.5 rounded-xl bg-[#121212] border border-[#b58e45]/30 hover:border-[#b58e45] text-sm font-bold text-[#f4f1ea] transition-all"
+              className="px-5 py-3 rounded-xl bg-[#2c2e30] border border-[#b58e45]/30 hover:border-[#b58e45] text-base font-bold text-[#f4f1ea] transition-all"
             >
               ← Gestor de Tasas
             </Link>
             <button
               onClick={fetchCrmData}
-              className="px-5 py-2.5 rounded-xl bg-[#b58e45] hover:bg-[#9d7938] text-sm font-black text-[#121212] transition-all shadow-[0_2px_12px_rgba(181,142,69,0.3)] cursor-pointer"
+              className="px-6 py-3 rounded-xl bg-[#b58e45] hover:bg-[#9d7938] text-base font-black text-[#121212] transition-all shadow-[0_2px_14px_rgba(181,142,69,0.35)] cursor-pointer"
             >
               Actualizar Datos
             </button>
           </div>
         </header>
 
-        {/* BARRA DE FILTRO TEMPORAL GLOBAL (#2c2e30) */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#2c2e30] border border-[#b58e45]/25 p-4 rounded-2xl shadow-xl">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="text-sm font-extrabold text-[#f4f1ea] flex items-center gap-2 pr-1">
-              <span className="text-base">📅</span>
+        {/* BARRA DE FILTRO TEMPORAL GLOBAL (FONDO ORIGINAL #121212) */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 bg-[#121212] border border-[#b58e45]/20 p-5 rounded-2xl shadow-xl">
+          <div className="flex flex-wrap items-center gap-3.5">
+            <div className="text-base font-extrabold text-[#f4f1ea] flex items-center gap-2.5 pr-1">
+              <span className="text-lg">📅</span>
               <span>Rango de Análisis:</span>
             </div>
 
@@ -1015,10 +1004,10 @@ export default function AdminCrmPage() {
                   setIsCalendarOpen(false);
                   setCurrentPage(1);
                 }}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                className={`px-5 py-2.5 rounded-xl text-base font-bold transition-all cursor-pointer ${
                   dateRangeFilter === btn.id
                     ? 'bg-[#b58e45] text-[#121212] shadow-md font-black scale-105'
-                    : 'bg-[#121212] text-[#f4f1ea]/80 hover:text-[#f4f1ea] border border-[#b58e45]/20'
+                    : 'bg-[#2c2e30] text-[#f4f1ea]/85 hover:text-[#f4f1ea] border border-[#b58e45]/20'
                 }`}
               >
                 {btn.label}
@@ -1034,10 +1023,10 @@ export default function AdminCrmPage() {
                     setTempEnd(customEndDate);
                   }
                 }}
-                className={`px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                className={`px-5 py-2.5 rounded-xl text-base font-bold transition-all cursor-pointer flex items-center gap-2.5 ${
                   dateRangeFilter === 'custom'
                     ? 'bg-[#b58e45] text-[#121212] shadow-md font-black scale-105'
-                    : 'bg-[#121212] text-[#f4f1ea]/80 hover:text-[#f4f1ea] border border-[#b58e45]/20'
+                    : 'bg-[#2c2e30] text-[#f4f1ea]/85 hover:text-[#f4f1ea] border border-[#b58e45]/20'
                 }`}
               >
                 <span>
@@ -1045,17 +1034,17 @@ export default function AdminCrmPage() {
                     ? `${customStartDate.split('-').slice(1).reverse().join('/')} al ${customEndDate.split('-').slice(1).reverse().join('/')}`
                     : 'Personalizado'}
                 </span>
-                <span className="text-[10px] opacity-70">▼</span>
+                <span className="text-xs opacity-70">▼</span>
               </button>
 
               {isCalendarOpen && (
                 <div
                   ref={calendarRef}
-                  className="absolute left-0 sm:left-auto sm:right-0 top-full mt-3 z-50 w-[440px] max-w-[95vw] bg-[#2c2e30] border border-[#b58e45]/40 rounded-2xl p-4 shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-xl flex flex-col gap-3"
+                  className="absolute left-0 sm:left-auto sm:right-0 top-full mt-3 z-50 w-[460px] max-w-[95vw] bg-[#2c2e30] border border-[#b58e45]/40 rounded-2xl p-5 shadow-[0_20px_60px_rgba(0,0,0,0.95)] backdrop-blur-xl flex flex-col gap-4 text-base"
                 >
                   <div className="flex gap-4">
-                    <div className="hidden sm:flex flex-col gap-1.5 w-32 border-r border-[#b58e45]/20 pr-3">
-                      <span className="text-[10px] font-black uppercase text-[#f4f1ea]/50 tracking-wider mb-1">
+                    <div className="hidden sm:flex flex-col gap-2 w-36 border-r border-[#b58e45]/20 pr-3">
+                      <span className="text-xs font-black uppercase text-[#f4f1ea]/50 tracking-wider mb-1">
                         Atajos
                       </span>
                       {[
@@ -1068,7 +1057,7 @@ export default function AdminCrmPage() {
                         <button
                           key={item.id}
                           onClick={() => setShortcutRange(item.id)}
-                          className="text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-[#f4f1ea]/80 hover:text-[#f4f1ea] hover:bg-[#b58e45]/20 transition-colors cursor-pointer"
+                          className="text-left px-3 py-2 rounded-lg text-sm font-semibold text-[#f4f1ea]/85 hover:text-[#f4f1ea] hover:bg-[#b58e45]/20 transition-colors cursor-pointer"
                         >
                           {item.label}
                         </button>
@@ -1076,18 +1065,18 @@ export default function AdminCrmPage() {
                     </div>
 
                     <div className="flex-1">
-                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#b58e45]/15">
+                      <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#b58e45]/15">
                         <button
                           onClick={() => {
                             const d = new Date(calendarViewDate);
                             d.setMonth(d.getMonth() - 1);
                             setCalendarViewDate(d);
                           }}
-                          className="p-1.5 rounded-lg hover:bg-[#121212] text-[#f4f1ea]/70 hover:text-[#f4f1ea] font-bold text-xs"
+                          className="p-2 rounded-lg hover:bg-[#121212] text-[#f4f1ea]/80 hover:text-[#f4f1ea] font-bold text-sm"
                         >
                           ◀
                         </button>
-                        <span className="font-extrabold text-sm text-[#f4f1ea] capitalize tracking-wide">
+                        <span className="font-extrabold text-base text-[#f4f1ea] capitalize tracking-wide">
                           {calendarViewDate.toLocaleString('es-VE', { month: 'long', year: 'numeric' })}
                         </span>
                         <button
@@ -1096,22 +1085,22 @@ export default function AdminCrmPage() {
                             d.setMonth(d.getMonth() + 1);
                             setCalendarViewDate(d);
                           }}
-                          className="p-1.5 rounded-lg hover:bg-[#121212] text-[#f4f1ea]/70 hover:text-[#f4f1ea] font-bold text-xs"
+                          className="p-2 rounded-lg hover:bg-[#121212] text-[#f4f1ea]/80 hover:text-[#f4f1ea] font-bold text-sm"
                         >
                           ▶
                         </button>
                       </div>
 
-                      <div className="grid grid-cols-7 text-center text-[10px] font-bold uppercase text-[#f4f1ea]/60 mb-1">
+                      <div className="grid grid-cols-7 text-center text-xs font-bold uppercase text-[#f4f1ea]/60 mb-2">
                         {['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá'].map((d) => (
                           <span key={d} className="py-1">{d}</span>
                         ))}
                       </div>
 
-                      <div className="grid grid-cols-7 gap-y-1">
+                      <div className="grid grid-cols-7 gap-y-1.5">
                         {calendarDays.map((cd, idx) => {
                           if (!cd.isCurrentMonth) {
-                            return <div key={`empty-${idx}`} className="h-9" />;
+                            return <div key={`empty-${idx}`} className="h-10" />;
                           }
 
                           const isStart = tempStart === cd.dateStr;
@@ -1122,7 +1111,7 @@ export default function AdminCrmPage() {
                           return (
                             <div
                               key={cd.dateStr}
-                              className={`h-9 flex items-center justify-center relative ${
+                              className={`h-10 flex items-center justify-center relative ${
                                 isInRange ? 'bg-[#b58e45]/20' : ''
                               } ${isStart && tempEnd ? 'bg-gradient-to-r from-transparent to-[#b58e45]/20 rounded-l-lg' : ''} ${
                                 isEnd ? 'bg-gradient-to-l from-transparent to-[#b58e45]/20 rounded-r-lg' : ''
@@ -1130,10 +1119,10 @@ export default function AdminCrmPage() {
                             >
                               <button
                                 onClick={() => handleCalendarDayClick(cd.dateStr)}
-                                className={`h-8 w-8 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                                className={`h-9 w-9 rounded-lg text-sm font-bold transition-all cursor-pointer flex items-center justify-center ${
                                   isStart || isEnd
                                     ? 'bg-[#b58e45] text-[#121212] font-black shadow-md scale-105'
-                                    : 'text-[#f4f1ea]/90 hover:bg-[#121212] hover:text-[#f4f1ea]'
+                                    : 'text-[#f4f1ea] hover:bg-[#121212]'
                                 }`}
                               >
                                 {cd.dayNum}
@@ -1145,31 +1134,31 @@ export default function AdminCrmPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-[#b58e45]/20 text-xs">
-                    <div className="text-[11px] text-[#f4f1ea]/70 font-mono">
+                  <div className="flex items-center justify-between pt-4 border-t border-[#b58e45]/20 text-sm">
+                    <div className="text-xs text-[#f4f1ea]/75 font-mono">
                       {tempStart ? `${tempStart} ${tempEnd ? `➔ ${tempEnd}` : ''}` : 'Elige rango'}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <button
                         onClick={() => {
                           setTempStart('');
                           setTempEnd('');
                         }}
-                        className="px-2.5 py-1 text-rose-400 hover:text-rose-300 font-bold"
+                        className="px-3 py-1.5 text-rose-400 hover:text-rose-300 font-bold"
                       >
                         Limpiar
                       </button>
                       <button
                         onClick={() => setIsCalendarOpen(false)}
-                        className="px-2.5 py-1 text-[#f4f1ea]/70 hover:text-[#f4f1ea]"
+                        className="px-3 py-1.5 text-[#f4f1ea]/80 hover:text-[#f4f1ea]"
                       >
                         Cancelar
                       </button>
                       <button
                         onClick={applyCustomDateRange}
                         disabled={!tempStart}
-                        className="px-4 py-1.5 bg-[#b58e45] hover:bg-[#9d7938] text-[#121212] font-black rounded-xl transition-all disabled:opacity-40"
+                        className="px-5 py-2 bg-[#b58e45] hover:bg-[#9d7938] text-[#121212] font-black rounded-xl transition-all disabled:opacity-40"
                       >
                         Aplicar
                       </button>
@@ -1180,25 +1169,25 @@ export default function AdminCrmPage() {
             </div>
           </div>
 
-          <div className="text-sm text-[#f4f1ea]/70 font-medium flex items-center gap-2 border-t md:border-t-0 pt-2 md:pt-0 border-[#b58e45]/15">
+          <div className="text-base text-[#f4f1ea]/80 font-medium flex items-center gap-3 border-t md:border-t-0 pt-3 md:pt-0 border-[#b58e45]/15">
             <span>Operaciones en el rango:</span>
-            <span className="font-mono font-extrabold text-[#b58e45] bg-[#121212] px-3 py-1 rounded-xl border border-[#b58e45]/30 text-base">
+            <span className="font-mono font-extrabold text-[#b58e45] bg-[#2c2e30] px-4 py-1.5 rounded-xl border border-[#b58e45]/30 text-lg">
               {sanitizedDateFilteredTransactions.length}
             </span>
           </div>
         </div>
 
-        {/* VALORES USDT DEL DÍA (FONDO #2c2e30) */}
+        {/* VALORES USDT DEL DÍA (FONDO ORIGINAL #121212) */}
         <CurrencyRatesManager />
 
-        {/* 6 TARJETAS DE KPIS PRINCIPALES (#2c2e30) */}
-        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="p-5 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 flex flex-col justify-between shadow-xl min-h-[145px]">
-            <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/60 tracking-wider">Volumen Cotizado</span>
-            <div className="text-2xl lg:text-3xl font-black text-[#b58e45] my-1 font-mono">
+        {/* 6 TARJETAS DE KPIS PRINCIPALES (FONDO ORIGINAL #121212) */}
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5">
+          <div className="p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-xl min-h-[160px]">
+            <span className="text-sm uppercase font-extrabold text-[#f4f1ea]/70 tracking-wider">Volumen Cotizado</span>
+            <div className="text-2xl sm:text-3xl font-black text-[#b58e45] my-2 font-mono">
               ${totalVolumeUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <span className="text-xs text-[#f4f1ea]/50 font-medium truncate">Equivalente Ref. USD</span>
+            <span className="text-sm text-[#f4f1ea]/60 font-medium truncate">Equivalente Ref. USD</span>
           </div>
 
           <div
@@ -1206,92 +1195,92 @@ export default function AdminCrmPage() {
               setFilterOnlyConfirmed(!filterOnlyConfirmed);
               setCurrentPage(1);
             }}
-            className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between shadow-xl min-h-[145px] group ${
+            className={`p-6 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between shadow-xl min-h-[160px] group ${
               filterOnlyConfirmed
                 ? 'bg-emerald-950/50 border-emerald-500 scale-[1.02] shadow-[0_0_20px_rgba(16,185,129,0.25)]'
-                : 'bg-[#2c2e30] border-[#b58e45]/25 hover:border-emerald-500/50'
+                : 'bg-[#121212] border-[#b58e45]/20 hover:border-emerald-500/50'
             }`}
           >
             <div className="flex justify-between items-center">
-              <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/60 tracking-wider">Confirmado</span>
-              <span className={`text-[10px] font-black px-2 py-0.5 rounded transition-all ${filterOnlyConfirmed ? 'bg-emerald-500 text-[#121212]' : 'bg-emerald-500/15 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-[#121212]'}`}>
+              <span className="text-sm uppercase font-extrabold text-[#f4f1ea]/70 tracking-wider">Confirmado</span>
+              <span className={`text-xs font-black px-2.5 py-1 rounded transition-all ${filterOnlyConfirmed ? 'bg-emerald-500 text-[#121212]' : 'bg-emerald-500/15 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-[#121212]'}`}>
                 {filterOnlyConfirmed ? 'FILTRANDO' : 'FILTRAR'}
               </span>
             </div>
-            <div className="text-2xl lg:text-3xl font-black text-emerald-400 my-1 font-mono">
+            <div className="text-2xl sm:text-3xl font-black text-emerald-400 my-2 font-mono">
               ${confirmedVolumeUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <span className="text-xs text-emerald-400/80 font-medium truncate">
+            <span className="text-sm text-emerald-400/90 font-medium truncate">
               {confirmedTransactions.length} cierres
             </span>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 flex flex-col justify-between shadow-xl min-h-[145px]">
-            <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/60 tracking-wider">Ticket Promedio</span>
-            <div className="text-2xl lg:text-3xl font-black text-[#cdead2] my-1 font-mono">
+          <div className="p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-xl min-h-[160px]">
+            <span className="text-sm uppercase font-extrabold text-[#f4f1ea]/70 tracking-wider">Ticket Promedio</span>
+            <div className="text-2xl sm:text-3xl font-black text-[#cdead2] my-2 font-mono">
               ${averageTicketUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <span className="text-xs text-[#f4f1ea]/50 font-medium truncate">Por cotización (USD)</span>
+            <span className="text-sm text-[#f4f1ea]/60 font-medium truncate">Por cotización (USD)</span>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 flex flex-col justify-between shadow-xl min-h-[145px]">
-            <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/60 tracking-wider">Cliente Más Fiel</span>
-            <div className="text-base font-extrabold text-[#f4f1ea] truncate my-1" title={mostLoyalClient.name}>
+          <div className="p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-xl min-h-[160px]">
+            <span className="text-sm uppercase font-extrabold text-[#f4f1ea]/70 tracking-wider">Cliente Más Fiel</span>
+            <div className="text-lg font-bold text-[#f4f1ea] truncate my-2" title={mostLoyalClient.name}>
               {mostLoyalClient.name}
             </div>
-            <span className="text-xs text-[#b58e45] font-bold truncate">{mostLoyalClient.count} cotizaciones</span>
+            <span className="text-sm text-[#b58e45] font-extrabold truncate">{mostLoyalClient.count} cotizaciones</span>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 flex flex-col justify-between shadow-xl min-h-[145px]">
-            <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/60 tracking-wider">Cliente Top (Cerrado)</span>
-            <div className="text-base font-extrabold text-[#f4f1ea] truncate my-0.5" title={topVolumeClient.name}>
+          <div className="p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-xl min-h-[160px]">
+            <span className="text-sm uppercase font-extrabold text-[#f4f1ea]/70 tracking-wider">Cliente Top (Cerrado)</span>
+            <div className="text-lg font-bold text-[#f4f1ea] truncate my-1" title={topVolumeClient.name}>
               {topVolumeClient.name}
             </div>
             <div className="flex flex-col">
-              <span className="text-sm text-emerald-400 font-black truncate font-mono">
+              <span className="text-base text-emerald-400 font-black truncate font-mono">
                 ${topVolumeClient.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} USD
               </span>
-              <span className="text-[11px] text-[#f4f1ea]/50 font-medium truncate">
+              <span className="text-xs text-[#f4f1ea]/60 font-medium truncate">
                 {topVolumeClient.ops > 0 ? `${topVolumeClient.ops} ops cerradas` : 'Sin transacciones'}
               </span>
             </div>
           </div>
 
-          <div className="p-5 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 flex flex-col justify-between shadow-xl min-h-[145px]">
-            <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/60 tracking-wider">Tasa Handover</span>
-            <div className="text-2xl lg:text-3xl font-black text-[#f4f1ea] my-1 font-mono">
+          <div className="p-6 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between shadow-xl min-h-[160px]">
+            <span className="text-sm uppercase font-extrabold text-[#f4f1ea]/70 tracking-wider">Tasa Handover</span>
+            <div className="text-2xl sm:text-3xl font-black text-[#f4f1ea] my-2 font-mono">
               {conversionRate.toFixed(1)}%
             </div>
-            <span className="text-xs text-[#f4f1ea]/50 font-medium truncate">Pase a atención humana</span>
+            <span className="text-sm text-[#f4f1ea]/60 font-medium truncate">Pase a atención humana</span>
           </div>
         </section>
 
-        {/* DISTRIBUCIÓN DE RUTAS Y PICOS (#2c2e30) */}
+        {/* DISTRIBUCIÓN DE RUTAS Y PICOS (FONDO ORIGINAL #121212) */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 p-6 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 space-y-4 shadow-xl">
-            <div className="flex items-center justify-between pb-3 border-b border-[#121212]/40">
+          <div className="lg:col-span-2 p-7 rounded-2xl bg-[#121212] border border-[#b58e45]/20 space-y-5 shadow-xl">
+            <div className="flex items-center justify-between pb-4 border-b border-[#2c2e30]/60">
               <div>
-                <h3 className="text-base font-bold text-[#f4f1ea]">Distribución Operativa por Ruta</h3>
-                <p className="text-xs text-[#f4f1ea]/60">Demanda e interés comercial en corredores</p>
+                <h3 className="text-lg font-bold text-[#f4f1ea]">Distribución Operativa por Ruta</h3>
+                <p className="text-sm text-[#f4f1ea]/70">Demanda e interés comercial en corredores</p>
               </div>
 
-              <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-xl border border-[#b58e45]/30">
+              <div className="flex items-center gap-1.5 bg-[#2c2e30] p-1.5 rounded-xl border border-[#b58e45]/30">
                 <button
                   onClick={() => setRouteViewMode('confirmed')}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`px-4 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${
                     routeViewMode === 'confirmed'
                       ? 'bg-emerald-500 text-[#121212] shadow'
-                      : 'text-[#f4f1ea]/70 hover:text-[#f4f1ea]'
+                      : 'text-[#f4f1ea]/80 hover:text-[#f4f1ea]'
                   }`}
                 >
                   ✓ Confirmadas
                 </button>
                 <button
                   onClick={() => setRouteViewMode('quoted')}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`px-4 py-2 text-sm font-bold rounded-lg transition-all cursor-pointer ${
                     routeViewMode === 'quoted'
                       ? 'bg-[#b58e45] text-[#121212] shadow'
-                      : 'text-[#f4f1ea]/70 hover:text-[#f4f1ea]'
+                      : 'text-[#f4f1ea]/80 hover:text-[#f4f1ea]'
                   }`}
                 >
                   📊 Cotizadas
@@ -1299,26 +1288,26 @@ export default function AdminCrmPage() {
               </div>
             </div>
 
-            <div className="space-y-3.5 max-h-64 overflow-y-auto pr-2">
+            <div className="space-y-4 max-h-72 overflow-y-auto pr-2">
               {routeDistribution.length === 0 ? (
-                <p className="text-sm text-[#f4f1ea]/40 py-8 text-center">
+                <p className="text-base text-[#f4f1ea]/50 py-10 text-center">
                   No hay operaciones {routeViewMode === 'confirmed' ? 'confirmadas' : 'cotizadas'} para el rango seleccionado.
                 </p>
               ) : (
                 routeDistribution.map((item, idx) => (
-                  <div key={item.route} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xs font-mono text-[#b58e45] font-black">#{idx + 1}</span>
+                  <div key={item.route} className="space-y-2">
+                    <div className="flex items-center justify-between text-base">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-mono text-[#b58e45] font-black">#{idx + 1}</span>
                         <span className="font-extrabold text-[#f4f1ea]">{item.route}</span>
                       </div>
-                      <span className="text-[#f4f1ea]/80 font-mono text-xs">
+                      <span className="text-[#f4f1ea]/90 font-mono text-sm">
                         <strong className={routeViewMode === 'confirmed' ? 'text-emerald-400' : 'text-[#b58e45]'}>
                           {item.count} ops
                         </strong> ({item.percentage}%)
                       </span>
                     </div>
-                    <div className="w-full bg-[#121212] h-2.5 rounded-full overflow-hidden border border-[#b58e45]/20">
+                    <div className="w-full bg-[#2c2e30] h-3 rounded-full overflow-hidden border border-[#b58e45]/20">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${
                           routeViewMode === 'confirmed'
@@ -1334,60 +1323,60 @@ export default function AdminCrmPage() {
             </div>
           </div>
 
-          <div className="p-6 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 flex flex-col justify-between space-y-4 shadow-xl">
+          <div className="p-7 rounded-2xl bg-[#121212] border border-[#b58e45]/20 flex flex-col justify-between space-y-5 shadow-xl">
             <div>
-              <h3 className="text-base font-bold text-[#f4f1ea]">Picos de Concurrencia</h3>
-              <p className="text-xs text-[#f4f1ea]/60">Momentos con mayor tráfico y solicitudes en Cyra</p>
+              <h3 className="text-lg font-bold text-[#f4f1ea]">Picos de Concurrencia</h3>
+              <p className="text-sm text-[#f4f1ea]/70">Momentos con mayor tráfico y solicitudes en Cyra</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3.5">
-              <div className="bg-[#121212]/80 p-4 rounded-xl border border-[#b58e45]/20 flex flex-col justify-between">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-[#2c2e30] p-5 rounded-xl border border-[#b58e45]/20 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/60 tracking-wider">Día Pico</span>
-                  <span className="text-sm">📅</span>
+                  <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/70 tracking-wider">Día Pico</span>
+                  <span className="text-base">📅</span>
                 </div>
-                <div className="my-2">
-                  <p className="text-lg font-black text-[#b58e45] truncate">{peakStats.peakDay}</p>
-                  <p className="text-xs text-[#f4f1ea]/60 font-mono mt-0.5">{peakStats.peakDayOps} operaciones</p>
+                <div className="my-3">
+                  <p className="text-xl font-black text-[#b58e45] truncate">{peakStats.peakDay}</p>
+                  <p className="text-sm text-[#f4f1ea]/70 font-mono mt-1">{peakStats.peakDayOps} operaciones</p>
                 </div>
-                <span className="text-[10px] text-[#f4f1ea]/40">Histórico real</span>
+                <span className="text-xs text-[#f4f1ea]/50">Histórico real</span>
               </div>
 
-              <div className="bg-[#121212]/80 p-4 rounded-xl border border-[#b58e45]/20 flex flex-col justify-between">
+              <div className="bg-[#2c2e30] p-5 rounded-xl border border-[#b58e45]/20 flex flex-col justify-between">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/60 tracking-wider">Hora Pico</span>
-                  <span className="text-sm">⏰</span>
+                  <span className="text-xs uppercase font-extrabold text-[#f4f1ea]/70 tracking-wider">Hora Pico</span>
+                  <span className="text-base">⏰</span>
                 </div>
-                <div className="my-2">
-                  <p className="text-lg font-black text-[#cdead2] truncate">{peakStats.peakHour}</p>
-                  <p className="text-xs text-[#f4f1ea]/60 font-mono mt-0.5">{peakStats.peakHourOps} operaciones</p>
+                <div className="my-3">
+                  <p className="text-xl font-black text-[#cdead2] truncate">{peakStats.peakHour}</p>
+                  <p className="text-sm text-[#f4f1ea]/70 font-mono mt-1">{peakStats.peakHourOps} operaciones</p>
                 </div>
-                <span className="text-[10px] text-[#f4f1ea]/40">GMT-4 (Caracas)</span>
+                <span className="text-xs text-[#f4f1ea]/50">GMT-4 (Caracas)</span>
               </div>
             </div>
 
-            <p className="text-xs text-[#f4f1ea]/50 text-center font-medium pt-2 border-t border-[#121212]/40">
+            <p className="text-sm text-[#f4f1ea]/60 text-center font-medium pt-3 border-t border-[#2c2e30]">
               Basado en timestamps reales de mensajes en Supabase
             </p>
           </div>
         </section>
 
-        {/* DIRECTORIO DE CLIENTES (#2c2e30) */}
-        <section className="p-6 sm:p-7 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 space-y-5 shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* DIRECTORIO DE CLIENTES (CON FONDO DESTACADO #2c2e30) */}
+        <section className="p-7 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 space-y-6 shadow-xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
             <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg sm:text-xl font-black text-[#f4f1ea]">Directorio de Clientes Autorizados</h2>
+              <div className="flex items-center gap-3.5">
+                <h2 className="text-xl sm:text-2xl font-black text-[#f4f1ea]">Directorio de Clientes Autorizados</h2>
                 {filterOnlyConfirmed && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold">
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-sm font-bold">
                     Solo Cierres Exitosos
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm text-[#f4f1ea]/60 mt-0.5">Haz clic en cualquier cliente para filtrar su historial específico abajo</p>
+              <p className="text-sm sm:text-base text-[#f4f1ea]/70 mt-1">Haz clic en cualquier cliente para filtrar su historial específico abajo</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex flex-wrap items-center gap-3">
               <input
                 type="text"
                 placeholder="Buscar por teléfono o nombre..."
@@ -1397,13 +1386,13 @@ export default function AdminCrmPage() {
                   setSearchTerm(sanitized);
                   setCurrentPage(1);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-[#121212] border border-[#b58e45]/30 focus:border-[#b58e45] text-sm text-[#f4f1ea] outline-none w-60"
+                className="px-4 py-2.5 rounded-xl bg-[#121212] border border-[#b58e45]/30 focus:border-[#b58e45] text-base text-[#f4f1ea] outline-none w-64"
               />
 
               <select
                 value={statusFilter}
                 onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2 rounded-xl bg-[#121212] border border-[#b58e45]/30 text-sm text-[#f4f1ea] outline-none font-medium"
+                className="px-4 py-2.5 rounded-xl bg-[#121212] border border-[#b58e45]/30 text-base text-[#f4f1ea] outline-none font-medium"
               >
                 <option value="all">Modos (Todos)</option>
                 <option value="bot">🤖 Bot</option>
@@ -1413,7 +1402,7 @@ export default function AdminCrmPage() {
               <select
                 value={originCountryFilter}
                 onChange={(e) => { setOriginCountryFilter(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2 rounded-xl bg-[#121212] border border-[#b58e45]/30 text-sm text-[#f4f1ea] outline-none font-medium"
+                className="px-4 py-2.5 rounded-xl bg-[#121212] border border-[#b58e45]/30 text-base text-[#f4f1ea] outline-none font-medium"
               >
                 <option value="all">Origen (Todos)</option>
                 {VALID_COUNTRIES.map((c) => (
@@ -1424,7 +1413,7 @@ export default function AdminCrmPage() {
               <select
                 value={destCountryFilter}
                 onChange={(e) => { setDestCountryFilter(e.target.value); setCurrentPage(1); }}
-                className="px-3 py-2 rounded-xl bg-[#121212] border border-[#b58e45]/30 text-sm text-[#f4f1ea] outline-none font-medium"
+                className="px-4 py-2.5 rounded-xl bg-[#121212] border border-[#b58e45]/30 text-base text-[#f4f1ea] outline-none font-medium"
               >
                 <option value="all">Destino (Todos)</option>
                 {VALID_COUNTRIES.map((c) => (
@@ -1435,7 +1424,7 @@ export default function AdminCrmPage() {
               {hasActiveClientFilters && (
                 <button
                   onClick={handleClearClientFilters}
-                  className="px-3 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-sm font-bold transition-all cursor-pointer flex items-center gap-2"
                   title="Restablecer buscador, origen, destino y modo"
                 >
                   <span>↺</span>
@@ -1446,7 +1435,7 @@ export default function AdminCrmPage() {
               {filterOnlyConfirmed && (
                 <button
                   onClick={() => setFilterOnlyConfirmed(false)}
-                  className="px-3 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-sm font-bold transition-all cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-base font-bold transition-all cursor-pointer"
                 >
                   Ver Todas ✕
                 </button>
@@ -1454,28 +1443,28 @@ export default function AdminCrmPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-[#b58e45]/20">
-            <table className="w-full text-left text-sm text-[#f4f1ea]">
-              <thead className="bg-[#121212] border-b border-[#b58e45]/20 text-[#f4f1ea]/70 uppercase text-xs font-bold tracking-wider">
+          <div className="overflow-x-auto rounded-xl border border-[#b58e45]/25">
+            <table className="w-full text-left text-base text-[#f4f1ea]">
+              <thead className="bg-[#121212] border-b border-[#b58e45]/25 text-[#f4f1ea]/80 uppercase text-sm font-extrabold tracking-wider">
                 <tr>
-                  <th className="py-4 px-5">Contacto</th>
-                  <th className="py-4 px-5">Ruta Habitual</th>
-                  <th className="py-4 px-5 text-center">Operaciones</th>
-                  <th className="py-4 px-5 text-right">Volumen USD</th>
-                  <th className="py-4 px-5 text-center">Estado Cyra</th>
-                  <th className="py-4 px-5 text-center">Acción</th>
+                  <th className="py-4 px-6">Contacto</th>
+                  <th className="py-4 px-6">Ruta Habitual</th>
+                  <th className="py-4 px-6 text-center">Operaciones</th>
+                  <th className="py-4 px-6 text-right">Volumen USD</th>
+                  <th className="py-4 px-6 text-center">Estado Cyra</th>
+                  <th className="py-4 px-6 text-center">Acción</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#b58e45]/10 bg-[#121212]/60">
+              <tbody className="divide-y divide-[#b58e45]/15 bg-[#121212]/70">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-sm text-[#f4f1ea]/40">
+                    <td colSpan={6} className="py-12 text-center text-base text-[#f4f1ea]/50">
                       Cargando datos de Supabase...
                     </td>
                   </tr>
                 ) : consolidatedClients.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-sm text-[#f4f1ea]/40">
+                    <td colSpan={6} className="py-12 text-center text-base text-[#f4f1ea]/50">
                       No se encontraron clientes autorizados con los filtros aplicados.
                     </td>
                   </tr>
@@ -1487,35 +1476,35 @@ export default function AdminCrmPage() {
                         key={client.phone}
                         onClick={() => setSelectedClientPhone(isSelected ? null : client.phone)}
                         className={`cursor-pointer transition-colors ${
-                          isSelected ? 'bg-[#b58e45]/20 border-l-4 border-[#b58e45]' : 'hover:bg-[#b58e45]/10'
+                          isSelected ? 'bg-[#b58e45]/25 border-l-4 border-[#b58e45]' : 'hover:bg-[#b58e45]/15'
                         }`}
                       >
-                        <td className="py-4 px-5 font-medium">
-                          <div className="font-bold text-base text-[#f4f1ea]">{client.full_name || 'Sin Nombre'}</div>
-                          <div className="text-xs text-[#f4f1ea]/60 font-semibold mt-0.5">+{client.phone}</div>
+                        <td className="py-4 px-6 font-medium">
+                          <div className="font-bold text-lg text-[#f4f1ea]">{client.full_name || 'Sin Nombre'}</div>
+                          <div className="text-sm text-[#f4f1ea]/70 font-semibold mt-1">+{client.phone}</div>
                         </td>
-                        <td className="py-4 px-5 text-sm text-[#f4f1ea]/90 font-medium">
+                        <td className="py-4 px-6 text-base text-[#f4f1ea]/95 font-medium">
                           {client.preferred_origin_country || 'N/A'} ➔ {client.preferred_dest_country || 'N/A'}
                         </td>
-                        <td className="py-4 px-5 text-center font-bold text-base text-[#f4f1ea] font-mono">
+                        <td className="py-4 px-6 text-center font-bold text-lg text-[#f4f1ea] font-mono">
                           {client.txCount}
                         </td>
-                        <td className="py-4 px-5 text-right font-black text-base text-[#b58e45] font-mono">
+                        <td className="py-4 px-6 text-right font-black text-lg text-[#b58e45] font-mono">
                           ${client.totalVolume.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                         </td>
-                        <td className="py-4 px-5 text-center">
+                        <td className="py-4 px-6 text-center">
                           <span
-                            className={`inline-block px-3 py-1 rounded-full text-xs font-black tracking-wide ${
+                            className={`inline-block px-3.5 py-1.5 rounded-full text-xs font-black tracking-wide ${
                               client.status === 'bot'
-                                ? 'bg-[#b58e45]/15 text-[#b58e45] border border-[#b58e45]/40'
-                                : 'bg-amber-500/15 text-amber-400 border border-amber-500/40'
+                                ? 'bg-[#b58e45]/20 text-[#b58e45] border border-[#b58e45]/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                             }`}
                           >
                             {client.status === 'bot' ? '🤖 BOT' : '👤 HUMANO'}
                           </span>
                         </td>
-                        <td className="py-4 px-5 text-center">
-                          <span className="text-xs text-[#b58e45] hover:underline font-bold">
+                        <td className="py-4 px-6 text-center">
+                          <span className="text-sm text-[#b58e45] hover:underline font-bold">
                             {isSelected ? 'Ver Todos' : 'Filtrar ➔'}
                           </span>
                         </td>
@@ -1528,33 +1517,33 @@ export default function AdminCrmPage() {
           </div>
         </section>
 
-        {/* AUDITORÍA DE TRANSACCIONES (#2c2e30) */}
-        <section className="p-6 sm:p-7 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 space-y-5 shadow-xl">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* AUDITORÍA DE TRANSACCIONES (CON FONDO DESTACADO #2c2e30) */}
+        <section className="p-7 rounded-2xl bg-[#2c2e30] border border-[#b58e45]/25 space-y-6 shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
             <div>
-              <div className="flex items-center gap-3">
-                <h2 className="text-lg sm:text-xl font-black text-[#f4f1ea]">
+              <div className="flex items-center gap-3.5">
+                <h2 className="text-xl sm:text-2xl font-black text-[#f4f1ea]">
                   Auditoría de Transacciones ({filteredTransactions.length} registros)
                 </h2>
                 {filterOnlyConfirmed && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-xs font-bold">
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-sm font-bold">
                     Solo Confirmadas
                   </span>
                 )}
               </div>
               {selectedClientPhone && (
-                <p className="text-sm text-[#b58e45] font-bold mt-1">
+                <p className="text-base text-[#b58e45] font-bold mt-1">
                   Filtrando: {clientMap[selectedClientPhone] ? `${clientMap[selectedClientPhone]} (+${selectedClientPhone})` : `+${selectedClientPhone}`}
                 </p>
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-[#f4f1ea]/80 font-medium">
+            <div className="flex items-center gap-3 text-base text-[#f4f1ea]/85 font-medium">
               <span>Mostrar:</span>
               <select
                 value={pageSize}
                 onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                className="px-3 py-1.5 rounded-xl bg-[#121212] border border-[#b58e45]/30 text-sm text-[#f4f1ea] outline-none font-bold"
+                className="px-4 py-2 rounded-xl bg-[#121212] border border-[#b58e45]/30 text-base text-[#f4f1ea] outline-none font-bold"
               >
                 <option value={10}>10</option>
                 <option value={25}>25</option>
@@ -1565,72 +1554,72 @@ export default function AdminCrmPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-[#b58e45]/20">
-            <table className="w-full text-left text-sm text-[#f4f1ea]">
-              <thead className="bg-[#121212] border-b border-[#b58e45]/20 text-[#f4f1ea]/70 uppercase text-xs font-bold tracking-wider">
+          <div className="overflow-x-auto rounded-xl border border-[#b58e45]/25">
+            <table className="w-full text-left text-base text-[#f4f1ea]">
+              <thead className="bg-[#121212] border-b border-[#b58e45]/25 text-[#f4f1ea]/80 uppercase text-sm font-extrabold tracking-wider">
                 <tr>
-                  <th className="py-4 px-5">Fecha / Hora</th>
-                  <th className="py-4 px-5">Cliente</th>
-                  <th className="py-4 px-5">Corredor</th>
-                  <th className="py-4 px-5 text-right">Envía</th>
-                  <th className="py-4 px-5 text-right">Recibe</th>
-                  <th className="py-4 px-5 text-right">Tasa Aplicada</th>
-                  <th className="py-4 px-5 text-right">Ref. USD</th>
-                  <th className="py-4 px-5 text-center">Estado</th>
+                  <th className="py-4 px-6">Fecha / Hora</th>
+                  <th className="py-4 px-6">Cliente</th>
+                  <th className="py-4 px-6">Corredor</th>
+                  <th className="py-4 px-6 text-right">Envía</th>
+                  <th className="py-4 px-6 text-right">Recibe</th>
+                  <th className="py-4 px-6 text-right">Tasa Aplicada</th>
+                  <th className="py-4 px-6 text-right">Ref. USD</th>
+                  <th className="py-4 px-6 text-center">Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#b58e45]/10 bg-[#121212]/60">
+              <tbody className="divide-y divide-[#b58e45]/15 bg-[#121212]/70">
                 {loading ? (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-sm text-[#f4f1ea]/40">
+                    <td colSpan={8} className="py-12 text-center text-base text-[#f4f1ea]/50">
                       Cargando historial...
                     </td>
                   </tr>
                 ) : paginatedTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-sm text-[#f4f1ea]/40">
+                    <td colSpan={8} className="py-12 text-center text-base text-[#f4f1ea]/50">
                       No hay transacciones que coincidan con la búsqueda.
                     </td>
                   </tr>
                 ) : (
                   paginatedTransactions.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-[#b58e45]/10 transition-colors">
-                      <td className="py-4 px-5 text-xs font-semibold text-[#f4f1ea]/70 font-mono">
+                    <tr key={tx.id} className="hover:bg-[#b58e45]/15 transition-colors">
+                      <td className="py-4 px-6 text-sm font-semibold text-[#f4f1ea]/80 font-mono">
                         {new Date(tx.created_at).toLocaleString('es-VE', {
                           timeZone: 'America/Caracas',
                           dateStyle: 'short',
                           timeStyle: 'short'
                         })}
                       </td>
-                      <td className="py-4 px-5 font-medium">
-                        <div className="font-bold text-sm text-[#f4f1ea]">
+                      <td className="py-4 px-6 font-medium">
+                        <div className="font-bold text-base text-[#f4f1ea]">
                           {clientMap[tx.client_phone] || 'Sin Nombre'}
                         </div>
-                        <div className="text-xs text-[#f4f1ea]/60 font-semibold mt-0.5">
+                        <div className="text-sm text-[#f4f1ea]/70 font-semibold mt-1">
                           +{tx.client_phone}
                         </div>
                       </td>
-                      <td className="py-4 px-5 text-sm text-[#f4f1ea]/90 font-medium">
+                      <td className="py-4 px-6 text-base text-[#f4f1ea]/95 font-medium">
                         {tx.origin_country} ➔ {tx.dest_country}
                       </td>
-                      <td className="py-4 px-5 text-right font-bold text-sm text-[#f4f1ea] font-mono">
+                      <td className="py-4 px-6 text-right font-bold text-base text-[#f4f1ea] font-mono">
                         {tx.amount_sent.toLocaleString()} {tx.origin_currency}
                       </td>
-                      <td className="py-4 px-5 text-right font-bold text-sm text-emerald-400 font-mono">
+                      <td className="py-4 px-6 text-right font-bold text-base text-emerald-400 font-mono">
                         {tx.amount_received.toLocaleString()} {tx.dest_currency}
                       </td>
-                      <td className="py-4 px-5 text-right text-xs font-medium text-[#f4f1ea]/70">
+                      <td className="py-4 px-6 text-right text-sm font-medium text-[#f4f1ea]/80">
                         {tx.rate_applied || 'Tasa estándar'}
                       </td>
-                      <td className="py-4 px-5 text-right font-black text-sm text-[#b58e45] font-mono">
+                      <td className="py-4 px-6 text-right font-black text-base text-[#b58e45] font-mono">
                         ${(tx.usd_equivalent || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                       </td>
-                      <td className="py-4 px-5 text-center">
+                      <td className="py-4 px-6 text-center">
                         <span
-                          className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                          className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
                             tx.status && tx.status.toLowerCase() !== 'quoted'
-                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                              : 'bg-zinc-500/15 text-zinc-400 border border-zinc-500/30'
+                              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/35'
+                              : 'bg-zinc-500/20 text-zinc-300 border border-zinc-500/35'
                           }`}
                         >
                           {tx.status && tx.status.toLowerCase() !== 'quoted' ? 'Confirmada' : 'Cotizada'}
@@ -1643,7 +1632,7 @@ export default function AdminCrmPage() {
             </table>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-5 border-t border-[#b58e45]/15 text-sm text-[#f4f1ea]/70 font-medium">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-5 pt-5 border-t border-[#b58e45]/15 text-base text-[#f4f1ea]/80 font-medium">
             <span>
               Página <strong className="text-[#f4f1ea] font-bold">{currentPage}</strong> de <strong className="text-[#f4f1ea] font-bold">{totalPages}</strong>
             </span>
@@ -1652,14 +1641,14 @@ export default function AdminCrmPage() {
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-4 py-2 rounded-xl bg-[#121212] border border-[#b58e45]/30 hover:border-[#b58e45] text-sm font-bold text-[#f4f1ea] disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#121212] border border-[#b58e45]/30 hover:border-[#b58e45] text-base font-bold text-[#f4f1ea] disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
               >
                 ← Anterior
               </button>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-4 py-2 rounded-xl bg-[#121212] border border-[#b58e45]/30 hover:border-[#b58e45] text-sm font-bold text-[#f4f1ea] disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[#121212] border border-[#b58e45]/30 hover:border-[#b58e45] text-base font-bold text-[#f4f1ea] disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
               >
                 Siguiente →
               </button>
