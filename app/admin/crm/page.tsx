@@ -34,7 +34,7 @@ interface CurrencyRate {
   id?: number;
   country: string;
   currency_code: string;
-  rate_to_usdt: number;
+  rate_to_usdt: number | string;
   updated_at?: string;
 }
 
@@ -70,7 +70,7 @@ function CurrencyRatesManager() {
       }
     } catch (err: any) {
       console.error('Error cargando currency_rates:', err);
-      setErrorMessage('No se pudieron cargar las paridades USDT.');
+      setErrorMessage('No se pudieron cargar los valores USDT.');
     } finally {
       setLoading(false);
     }
@@ -80,10 +80,20 @@ function CurrencyRatesManager() {
     fetchRates();
   }, []);
 
+  // Sanitizador numérico idéntico al de app/admin/page.tsx
+  const sanitizeNumericInput = (val: string): string => {
+    let clean = val.replace(/[^0-9.]/g, '');
+    const parts = clean.split('.');
+    if (parts.length > 2) {
+      clean = parts[0] + '.' + parts.slice(1).join('');
+    }
+    return clean;
+  };
+
   const handleRateChange = (country: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
+    const clean = sanitizeNumericInput(value);
     setRates((prev) =>
-      prev.map((r) => (r.country === country ? { ...r, rate_to_usdt: numValue } : r))
+      prev.map((r) => (r.country === country ? { ...r, rate_to_usdt: clean } : r))
     );
   };
 
@@ -97,7 +107,7 @@ function CurrencyRatesManager() {
       const updates = rates.map((r) => ({
         country: r.country,
         currency_code: r.currency_code,
-        rate_to_usdt: r.rate_to_usdt,
+        rate_to_usdt: parseFloat(String(r.rate_to_usdt)) || 0,
         updated_at: nowIso,
       }));
 
@@ -111,7 +121,7 @@ function CurrencyRatesManager() {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
       console.error('Error guardando currency_rates:', err);
-      setErrorMessage('Hubo un error al guardar las paridades.');
+      setErrorMessage('Hubo un error al guardar los valores.');
     } finally {
       setSaving(false);
     }
@@ -128,7 +138,7 @@ function CurrencyRatesManager() {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_#10b981]" />
             <h3 className="text-sm font-black uppercase tracking-wider text-[#f4f1ea]">
-              Paridades USDT del Día (P2P Referencial)
+              Valores USDT del Día (P2P Referencial)
             </h3>
           </div>
           <p className="text-xs text-[#f4f1ea]/60 mt-0.5 font-medium">
@@ -139,13 +149,13 @@ function CurrencyRatesManager() {
         <button
           onClick={handleSave}
           disabled={saving || loading}
-          className={`px-4 py-2 text-xs font-black rounded-xl transition-all cursor-pointer shadow-md ${
+          className={`px-5 py-2 text-xs font-black rounded-xl transition-all cursor-pointer shadow-md ${
             saveSuccess
               ? 'bg-emerald-500 text-[#0d0d0d]'
               : 'bg-[#b58e45] hover:bg-[#9d7938] text-[#0d0d0d] disabled:opacity-40 disabled:pointer-events-none'
           }`}
         >
-          {saving ? 'Guardando...' : saveSuccess ? '✓ Paridades Actualizadas' : 'Guardar Paridades'}
+          {saving ? 'Guardando...' : saveSuccess ? '✓ Guardado' : 'Guardar'}
         </button>
       </div>
 
@@ -156,7 +166,7 @@ function CurrencyRatesManager() {
       )}
 
       {loading ? (
-        <div className="py-4 text-center text-xs text-[#f4f1ea]/40">Cargando paridades configuradas...</div>
+        <div className="py-4 text-center text-xs text-[#f4f1ea]/40">Cargando valores configurados...</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {editableCurrencies.map((item) => (
@@ -164,20 +174,24 @@ function CurrencyRatesManager() {
               key={item.country}
               className="bg-[#0d0d0d] border border-[#b58e45]/20 hover:border-[#b58e45]/40 rounded-xl p-3 flex flex-col justify-between transition-colors"
             >
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-[#f4f1ea]">{item.country}</span>
                 <span className="text-[10px] font-mono font-bold text-[#b58e45] bg-[#b58e45]/10 px-1.5 py-0.5 rounded border border-[#b58e45]/30">
                   {item.currency_code}
                 </span>
               </div>
-              <input
-                type="number"
-                step="any"
-                value={item.rate_to_usdt || ''}
-                onChange={(e) => handleRateChange(item.country, e.target.value)}
-                className="w-full bg-[#121212] border border-[#b58e45]/30 focus:border-[#b58e45] focus:outline-none text-[#f4f1ea] text-xs font-mono font-bold rounded-lg px-2.5 py-1.5 transition-colors"
-                placeholder="0.00"
-              />
+              
+              {/* Contenedor idéntico al de app/admin/page.tsx */}
+              <div className="relative border border-[#b58e45]/30 rounded-xl bg-[#121212]/60 focus-within:border-[#b58e45] transition-colors">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={item.rate_to_usdt ?? ''}
+                  onChange={(e) => handleRateChange(item.country, e.target.value)}
+                  className="w-full bg-transparent text-[#f4f1ea] font-bold text-right p-2 rounded-xl outline-none text-xs"
+                  placeholder="0.00"
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -292,7 +306,7 @@ export default function AdminCrmPage() {
     return map;
   }, [clients]);
 
-  // Detector de filtros activos en la barra de clientes
+  // Detector de filtros activos
   const hasActiveClientFilters = useMemo(() => {
     return (
       searchTerm.trim() !== '' ||
@@ -546,7 +560,7 @@ export default function AdminCrmPage() {
     };
   }, [sanitizedDateFilteredTransactions]);
 
-  // Directorio de clientes con filtro de búsqueda tolerante a prefijos '+' y códigos de país
+  // Directorio de clientes con filtro de búsqueda tolerante
   const consolidatedClients = useMemo(() => {
     const activeBaseTransactions = filterOnlyConfirmed ? confirmedTransactions : sanitizedDateFilteredTransactions;
 
@@ -592,7 +606,7 @@ export default function AdminCrmPage() {
       .sort((a, b) => b.totalVolume - a.totalVolume);
   }, [clients, sanitizedDateFilteredTransactions, confirmedTransactions, filterOnlyConfirmed, searchTerm, statusFilter, originCountryFilter, destCountryFilter]);
 
-  // Historial con filtro tolerante a '+' y códigos de área
+  // Historial con filtro tolerante
   const filteredTransactions = useMemo(() => {
     const cleanSearch = searchTerm.trim().toLowerCase();
 
@@ -657,7 +671,7 @@ export default function AdminCrmPage() {
           </div>
         </header>
 
-        {/* GESTOR DE PARIDADES USDT */}
+        {/* VALORES USDT DEL DÍA (INPUTS ESTANDARIZADOS) */}
         <CurrencyRatesManager />
 
         {/* BARRA DE FILTRO TEMPORAL GLOBAL Y DATEPICKER POPOVER */}
@@ -1084,7 +1098,6 @@ export default function AdminCrmPage() {
                 ))}
               </select>
 
-              {/* Botón dinámico 'Limpiar Filtros' estilo CRM */}
               {hasActiveClientFilters && (
                 <button
                   onClick={handleClearClientFilters}
